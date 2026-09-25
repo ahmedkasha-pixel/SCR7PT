@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <title>SCR7PT B - full square icon (iOS / store)</title>
+  <rect width="108" height="108" fill="#0F172A"/>
+  <g id="artwork" transform="matrix(1.5 0 0 1.5 -27 -27)">
+    <path d="M54,30.5 H73 A4.5,4.5 0 0 1 77.5,35 V54 A23.5,23.5 0 0 1 54,77.5 A23.5,23.5 0 0 1 30.5,54 A23.5,23.5 0 0 1 54,30.5 Z" fill="#2563EB" fill-rule="evenodd"/>
+    <path d="M54,37 H71 V54 A17,17 0 0 1 54,71 A17,17 0 0 1 37,54 A17,17 0 0 1 54,37 Z" fill="#0F172A" fill-rule="evenodd"/>
+    <circle cx="54" cy="54" r="12.8" fill="none" stroke="#06B6D4" stroke-width="3.4"/>
+    <polygon points="49.4,47.9 54.63,47.9 58.6,51.87 58.6,60.1 49.4,60.1" fill="#E2E8F0" stroke="#E2E8F0" stroke-width="1.8" stroke-linejoin="round"/>
+    <polygon points="55,48.27 55,51.5 58.23,51.5" fill="#94A3B8" stroke="#94A3B8" stroke-width="1.8" stroke-linejoin="round"/>
+  </g>
+</svg>
