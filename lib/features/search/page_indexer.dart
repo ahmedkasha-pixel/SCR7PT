@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../../core/ocr/page_ocr.dart';
 import '../../core/search/content_search.dart';
 import '../../data/models/records.dart';
@@ -46,7 +48,11 @@ class PageIndexer {
   }
 
   Future<void> backfill() async {
-    enqueue(await _documents.pagesWithoutText());
+    try {
+      enqueue(await _documents.pagesWithoutText());
+    } catch (error, stack) {
+      debugPrint('OCR backfill skipped: $error\n$stack');
+    }
   }
 
   Future<void> _pump() async {
@@ -71,8 +77,9 @@ class PageIndexer {
             );
             _onIndexed(stored);
           }
-        } catch (_) {
+        } catch (error, stack) {
           _failed.add(page.id);
+          debugPrint('OCR page ${page.id} skipped: $error\n$stack');
         }
         if (_queue.isNotEmpty && gap > Duration.zero) {
           await Future<void>.delayed(gap);

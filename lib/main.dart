@@ -54,7 +54,6 @@ Future<void> main() async {
     onIndexing: library.setIndexing,
   );
   documents.onPagesReady = indexer.enqueue;
-  unawaited(indexer.backfill());
   await drive.start(
     monitor: GoogleConfig.isConfigured ? PluginNetworkMonitor() : null,
   );
@@ -70,4 +69,9 @@ Future<void> main() async {
       createCamera: LiveScanCamera.new,
     ),
   );
+  // Index existing pages only after the first frame, and never let a failure
+  // there surface as a launch crash.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(indexer.backfill());
+  });
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../core/geometry/quad.dart';
@@ -361,11 +362,12 @@ class DocumentRepository {
     final normalized = normalizeForSearch(rawText);
     final digits = extractDigitRuns(rawText).map((run) => run.digits).join(' ');
     await _deleteFtsForPage(db, pageId);
-    final rowid = await db.insert('page_fts', {
-      'normalized': normalized,
-      'page_id': pageId,
-      'document_id': documentId,
-    });
+    final rowid = await _insertFtsRow(
+      db,
+      normalized: normalized,
+      pageId: pageId,
+      documentId: documentId,
+    );
     await db.insert('page_text', {
       'page_id': pageId,
       'document_id': documentId,
@@ -414,11 +416,16 @@ class DocumentRepository {
 
   Future<List<String>> pageIdsMatchingFts(String match) async {
     final db = await _database.database;
-    final rows = await db.rawQuery(
-      'SELECT page_id FROM page_fts WHERE page_fts MATCH ?',
-      [match],
-    );
-    return [for (final row in rows) row['page_id'] as String];
+    try {
+      final rows = await db.rawQuery(
+        'SELECT page_id FROM page_fts WHERE page_fts MATCH ?',
+        [match],
+      );
+      return [for (final row in rows) row['page_id'] as String];
+    } catch (error) {
+      debugPrint('FTS match skipped: $error');
+      return const [];
+    }
   }
 
   Future<void> _deleteFtsForDocument(Database db, String documentId) async {
@@ -431,7 +438,7 @@ class DocumentRepository {
     for (final row in rows) {
       final rowid = row['fts_rowid'] as int?;
       if (rowid == null) continue;
-      await db.rawDelete('DELETE FROM page_fts WHERE rowid = ?', [rowid]);
+      await _deleteFtsRow(db, rowid);
     }
     await db.delete(
       'page_text',
@@ -451,9 +458,35 @@ class DocumentRepository {
     if (rows.isEmpty) return;
     final rowid = rows.first['fts_rowid'] as int?;
     if (rowid != null) {
-      await db.rawDelete('DELETE FROM page_fts WHERE rowid = ?', [rowid]);
+      await _deleteFtsRow(db, rowid);
     }
     await db.delete('page_text', where: 'page_id = ?', whereArgs: [pageId]);
+  }
+
+  Future<int?> _insertFtsRow(
+    Database db, {
+    required String normalized,
+    required String pageId,
+    required String documentId,
+  }) async {
+    try {
+      return await db.insert('page_fts', {
+        'normalized': normalized,
+        'page_id': pageId,
+        'document_id': documentId,
+      });
+    } catch (error) {
+      debugPrint('FTS insert skipped: $error');
+      return null;
+    }
+  }
+
+  Future<void> _deleteFtsRow(Database db, int rowid) async {
+    try {
+      await db.rawDelete('DELETE FROM page_fts WHERE rowid = ?', [rowid]);
+    } catch (error) {
+      debugPrint('FTS delete skipped: $error');
+    }
   }
 }
 

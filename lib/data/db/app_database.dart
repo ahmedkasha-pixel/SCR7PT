@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
@@ -112,6 +113,12 @@ class AppDatabase {
           await _createPageText(db);
         }
       },
+      // FTS5 is optional. Creating it inside onCreate/onUpgrade aborts the
+      // sqflite transaction on Android 10 and older (`no such module: fts5`)
+      // and the app then dies in main() before the first frame.
+      onOpen: (db) async {
+        await _ensurePageFts(db);
+      },
     );
     _database = opened;
     return opened;
@@ -136,14 +143,39 @@ Future<void> _createPageText(Database db) async {
       FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE
     )
   ''');
-  await db.execute('''
-    CREATE VIRTUAL TABLE IF NOT EXISTS page_fts USING fts5(
-      normalized,
-      page_id UNINDEXED,
-      document_id UNINDEXED,
-      tokenize = 'unicode61 remove_diacritics 0'
-    )
-  ''');
+}
+
+/// Best-effort full-text index. Search still works from `page_text` when
+/// this module or tokenizer is missing.
+Future<void> _ensurePageFts(Database db) async {
+  try {
+    final existing = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'page_fts'",
+    );
+    if (existing.isNotEmpty) return;
+    try {
+      await db.execute('''
+        CREATE VIRTUAL TABLE page_fts USING fts5(
+          normalized,
+          page_id UNINDEXED,
+          document_id UNINDEXED,
+          tokenize = 'unicode61 remove_diacritics 0'
+        )
+      ''');
+    } catch (error) {
+      debugPrint('FTS unicode61 option unavailable: $error');
+      await db.execute('''
+        CREATE VIRTUAL TABLE page_fts USING fts5(
+          normalized,
+          page_id UNINDEXED,
+          document_id UNINDEXED,
+          tokenize = 'unicode61'
+        )
+      ''');
+    }
+  } catch (error, stack) {
+    debugPrint('Page FTS skipped: $error\n$stack');
+  }
 }
 
 Future<void> _createDriveLinks(Database db) {

@@ -79,7 +79,18 @@ Uint8List prepareOcrImage(Uint8List bytes) {
   if (decoded == null) return bytes;
   var image = decoded.convert(format: img.Format.uint8, numChannels: 1);
   final longest = image.width > image.height ? image.width : image.height;
-  if (longest < 1400) {
+  // Cap the working size so a large photo cannot OOM the process during
+  // first-launch indexing. Small pages are still upscaled.
+  const maxEdge = 2000;
+  if (longest > maxEdge) {
+    final scale = maxEdge / longest;
+    image = img.copyResize(
+      image,
+      width: (image.width * scale).round(),
+      height: (image.height * scale).round(),
+      interpolation: img.Interpolation.linear,
+    );
+  } else if (longest < 1400) {
     final scale = 1400 / longest;
     image = img.copyResize(
       image,

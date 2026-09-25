@@ -8,6 +8,7 @@ import 'package:docscan/data/repositories/document_repository.dart';
 import 'package:docscan/data/storage/file_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'support/sqlite_setup.dart';
 
@@ -60,6 +61,123 @@ void main() {
     await repository.deleteDocument(document.id);
     expect(await repository.pageIdsMatchingFts('رام*'), isEmpty);
     expect(await repository.indexedPages(), isEmpty);
+  });
+
+  test('v3 database upgrades and keeps documents when FTS is dropped', () async {
+    final path = '${directory.path}/legacy.sqlite';
+    final legacy = await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 3,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE documents (
+              id TEXT PRIMARY KEY,
+              folder_id TEXT,
+              name TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE pages (
+              id TEXT PRIMARY KEY,
+              document_id TEXT NOT NULL,
+              position INTEGER NOT NULL,
+              original_path TEXT NOT NULL,
+              processed_path TEXT NOT NULL,
+              filter TEXT NOT NULL,
+              corners TEXT NOT NULL,
+              created_at INTEGER NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE folders (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE signatures (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              image_path TEXT NOT NULL,
+              created_at INTEGER NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE signature_placements (
+              id TEXT PRIMARY KEY,
+              page_id TEXT NOT NULL,
+              signature_id TEXT NOT NULL,
+              center_x REAL NOT NULL,
+              center_y REAL NOT NULL,
+              width REAL NOT NULL,
+              height REAL NOT NULL,
+              rotation REAL NOT NULL
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE drive_links (
+              document_id TEXT PRIMARY KEY,
+              status TEXT NOT NULL,
+              file_ids TEXT NOT NULL,
+              progress REAL NOT NULL,
+              error TEXT,
+              format TEXT NOT NULL,
+              compression TEXT NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          await db.insert('documents', {
+            'id': 'doc-lease',
+            'folder_id': null,
+            'name': 'عقد الإيجار',
+            'created_at': 1,
+            'updated_at': 2,
+          });
+          await db.insert('pages', {
+            'id': 'page-1',
+            'document_id': 'doc-lease',
+            'position': 0,
+            'original_path': '/tmp/a.jpg',
+            'processed_path': '/tmp/b.jpg',
+            'filter': 'original',
+            'corners': '{}',
+            'created_at': 1,
+          });
+        },
+      ),
+    );
+    await legacy.close();
+
+    final database = AppDatabase(path: path);
+    final upgraded = DocumentRepository(
+      database: database,
+      files: FileStore(Directory('${directory.path}/files')),
+      clock: () => DateTime(2026, 9, 25, 9),
+    );
+    final documents = await upgraded.allDocuments();
+    expect(documents.single.name, 'عقد الإيجار');
+    expect(documents.single.pageCount, 1);
+    expect(await upgraded.indexedPages(), isEmpty);
+    expect(await upgraded.pagesWithoutText(), hasLength(1));
+
+    final db = await database.database;
+    await db.execute('DROP TABLE page_fts');
+    await upgraded.savePageText(
+      pageId: 'page-1',
+      documentId: 'doc-lease',
+      position: 0,
+      rawText: '055-123-4567',
+    );
+    expect((await upgraded.indexedPages()).single.digits, contains('0551234567'));
+    expect(await upgraded.pageIdsMatchingFts('055*'), isEmpty);
+    await upgraded.deleteDocument('doc-lease');
+    expect(await upgraded.allDocuments(), isEmpty);
+    await upgraded.close();
   });
 }
 
