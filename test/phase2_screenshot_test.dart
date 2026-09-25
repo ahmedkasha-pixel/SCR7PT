@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:docscan/core/theme/app_theme.dart';
 import 'package:docscan/core/processing/compress.dart';
+import 'package:docscan/core/processing/signature_extract.dart';
+import 'package:docscan/core/theme/app_theme.dart';
 import 'package:docscan/data/models/records.dart';
 import 'package:docscan/features/signature/signature_import.dart';
 import 'package:docscan/features/signature/signature_place_screen.dart';
@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 
 import 'support/fakes.dart';
+import 'support/handwritten.dart';
 
 void main() {
   testWidgets('writes phase 2 Arabic screens', (tester) async {
@@ -23,9 +24,20 @@ void main() {
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.runAsync(_loadFonts);
+    await tester.runAsync(() async {
+      await _loadFonts();
+      await loadHandwritingFont();
+    });
 
-    final signature = _signaturePng();
+    final photo = (await tester.runAsync(
+      () => renderBallpointOnPaper(shadow: true, lines: false),
+    ))!;
+    final extracted = extractSignatureImage(
+      photo,
+      cleanliness: 0.4,
+      ink: SignatureInk.original,
+    );
+    final signature = Uint8List.fromList(img.encodePng(extracted));
     final page = _pageJpeg();
     final harness = (await tester.runAsync(
       () => createHarness(preferences: const {'language_code': 'ar'}),
@@ -81,6 +93,7 @@ void main() {
     expect(find.text('توقيع العقد'), findsOneWidget);
     expect(find.text('إضافة توقيع'), findsOneWidget);
     await _save(tester, 'signatures-ar');
+    _expectPainted('signatures-ar');
     _pop(tester);
     await tester.pumpAndSettle();
 
@@ -97,6 +110,7 @@ void main() {
     expect(find.text('الوضوح'), findsOneWidget);
     expect(find.text('أسود'), findsOneWidget);
     await _save(tester, 'signature-cleanup-ar');
+    _expectPainted('signature-cleanup-ar');
     _pop(tester);
     await tester.pumpAndSettle();
 
@@ -108,7 +122,35 @@ void main() {
     expect(find.text('وضع التوقيع'), findsOneWidget);
     expect(find.text('تثبيت على الصفحة'), findsOneWidget);
     await _save(tester, 'signature-place-ar');
+    _expectPainted('signature-place-ar');
   });
+}
+
+void _expectPainted(String name) {
+  final image = img.decodePng(
+    File('build/screenshots/phase2/$name.png').readAsBytesSync(),
+  )!;
+  const background = (15, 23, 42);
+  var sampled = 0;
+  var different = 0;
+  final y0 = (image.height * 0.16).round();
+  final y1 = (image.height * 0.62).round();
+  for (var y = y0; y < y1; y += 3) {
+    for (var x = 12; x < image.width - 12; x += 3) {
+      sampled++;
+      final pixel = image.getPixel(x, y);
+      if ((pixel.r - background.$1).abs() > 12 ||
+          (pixel.g - background.$2).abs() > 12 ||
+          (pixel.b - background.$3).abs() > 12) {
+        different++;
+      }
+    }
+  }
+  expect(
+    different / sampled,
+    greaterThan(0.08),
+    reason: '$name preview is still an empty dark panel',
+  );
 }
 
 void _push(WidgetTester tester, Widget page) {
@@ -134,6 +176,10 @@ Future<void> _save(WidgetTester tester, String name) async {
       reason: text,
     );
   }
+  await tester.pump();
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 200)),
+  );
   await tester.pump();
   final boundary = tester.renderObject<RenderRepaintBoundary>(
     find.byKey(const Key('shot')),
@@ -176,28 +222,6 @@ Future<void> _loadFonts() async {
 Future<ByteData> _bytes(String path) async {
   final data = await File(path).readAsBytes();
   return ByteData.sublistView(data);
-}
-
-Uint8List _signaturePng() {
-  final image = img.Image(width: 280, height: 90, numChannels: 4);
-  img.fill(image, color: img.ColorRgba8(0, 0, 0, 0));
-  img.fillRect(
-    image,
-    x1: 16,
-    y1: 36,
-    x2: 250,
-    y2: 48,
-    color: img.ColorRgba8(15, 23, 42, 255),
-  );
-  img.fillRect(
-    image,
-    x1: 70,
-    y1: 18,
-    x2: 84,
-    y2: 72,
-    color: img.ColorRgba8(15, 23, 42, 255),
-  );
-  return Uint8List.fromList(img.encodePng(image));
 }
 
 Uint8List _pageJpeg() {

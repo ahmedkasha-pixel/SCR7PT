@@ -427,15 +427,21 @@ class _SignatureImportScreenState extends State<SignatureImportScreen> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Checkerboard(
+            child: Checkerboard(
+              child: SizedBox.expand(
                 child: preview == null
-                    ? const SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: CircularProgressIndicator(),
+                    ? const Center(
+                        child: SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: CircularProgressIndicator(),
+                        ),
                       )
-                    : Image.memory(preview, fit: BoxFit.contain),
+                    : Image.memory(
+                        preview,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                      ),
               ),
             ),
           ),

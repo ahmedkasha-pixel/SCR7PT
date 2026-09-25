@@ -84,20 +84,29 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
                     constraints.biggest,
                     Size(_pageAspect, 1),
                   );
+                  final mark = Rect.fromCenter(
+                    center: Offset(
+                      box.left + _centerX * box.width,
+                      box.top + _centerY * box.height,
+                    ),
+                    width: _width * box.width,
+                    height: _height * box.height,
+                  );
                   return Stack(
                     children: [
                       Positioned.fromRect(
                         rect: box,
-                        child: Image.memory(
-                          widget.pageJpeg,
-                          fit: BoxFit.fill,
+                        child: ColoredBox(
+                          color: const Color(0xFFF4F2EE),
+                          child: Image.memory(
+                            widget.pageJpeg,
+                            fit: BoxFit.fill,
+                            gaplessPlayback: true,
+                          ),
                         ),
                       ),
-                      Positioned(
-                        left: box.left + (_centerX - _width / 2) * box.width,
-                        top: box.top + (_centerY - _height / 2) * box.height,
-                        width: _width * box.width,
-                        height: _height * box.height,
+                      Positioned.fromRect(
+                        rect: mark,
                         child: GestureDetector(
                           onScaleStart: (_) {
                             _baseWidth = _width;
@@ -106,27 +115,43 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
                           onScaleUpdate: (details) {
                             setState(() {
                               _width = (_baseWidth * details.scale).clamp(
-                                0.12,
+                                0.16,
                                 0.9,
                               );
                               _rotation = _baseRotation + details.rotation;
                               _centerX = (_centerX +
                                       details.focalPointDelta.dx / box.width)
-                                  .clamp(0.05, 0.95);
+                                  .clamp(0.08, 0.92);
                               _centerY = (_centerY +
                                       details.focalPointDelta.dy / box.height)
-                                  .clamp(0.05, 0.95);
+                                  .clamp(0.08, 0.92);
                             });
                           },
                           child: Transform.rotate(
                             angle: _rotation,
-                            child: Image.memory(
-                              widget.signaturePng,
-                              fit: BoxFit.fill,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0xFF2563EB),
+                                  width: 2,
+                                ),
+                              ),
+                              child: Image.memory(
+                                widget.signaturePng,
+                                fit: BoxFit.fill,
+                                gaplessPlayback: true,
+                              ),
                             ),
                           ),
                         ),
                       ),
+                      for (final handle in const [
+                        Alignment.topLeft,
+                        Alignment.topRight,
+                        Alignment.bottomLeft,
+                        Alignment.bottomRight,
+                      ])
+                        _resizeHandle(box, mark, handle),
                     ],
                   );
                 },
@@ -158,6 +183,47 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
         ],
       ),
     );
+  }
+
+  Widget _resizeHandle(Rect pageBox, Rect mark, Alignment alignment) {
+    final point = alignment.withinRect(mark);
+    const size = 18.0;
+    return Positioned(
+      left: point.dx - size / 2,
+      top: point.dy - size / 2,
+      width: size,
+      height: size,
+      child: GestureDetector(
+        onPanUpdate: (details) => _dragHandle(details.delta, pageBox, alignment),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB),
+            border: Border.all(color: Colors.white, width: 2),
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _dragHandle(Offset delta, Rect pageBox, Alignment alignment) {
+    if (pageBox.width <= 0 || pageBox.height <= 0) return;
+    final dx = delta.dx / pageBox.width;
+    final grow = alignment.x * dx;
+    setState(() {
+      final next = (_width + grow).clamp(0.16, 0.92);
+      final applied = next - _width;
+      _width = next;
+      _centerX = (_centerX + alignment.x * applied / 2).clamp(0.08, 0.92);
+      final heightDelta = alignment.y * delta.dy / pageBox.height;
+      final widthFromHeight = heightDelta * _sigAspect * _pageAspect;
+      final nextH = (_width + widthFromHeight).clamp(0.16, 0.92);
+      final appliedH = nextH - _width;
+      _width = nextH;
+      _centerY = (_centerY +
+              alignment.y * (appliedH / _sigAspect / _pageAspect) / 2)
+          .clamp(0.08, 0.92);
+    });
   }
 
   Rect _contain(Size outer, Size inner) {

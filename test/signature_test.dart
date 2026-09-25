@@ -9,6 +9,8 @@ import 'package:docscan/data/models/records.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 
+import 'support/handwritten.dart';
+
 void main() {
   test('paper becomes transparent and ink stays opaque, including a shadow', () {
     final clean = _paper(width: 220, height: 120, shadow: false);
@@ -83,18 +85,32 @@ void main() {
     expect(embeddedDark, inInclusiveRange(60, 110));
   });
 
-  test('writes the signature background comparison', () {
-    final clean = _paper(width: 360, height: 180, shadow: false);
-    _stroke(clean, 90, 70, 180, 28);
-    final shadow = _paper(width: 360, height: 180, shadow: true);
-    _stroke(shadow, 100, 78, 160, 26);
-    final lined = _paper(width: 360, height: 180, shadow: false, lines: true);
-    _stroke(lined, 96, 74, 170, 30);
+  test('a blurred ballpoint signature on shadowed paper keeps the ink', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final photo = await renderBallpointOnPaper(shadow: true, lines: false);
+    final extracted = extractSignatureImage(
+      photo,
+      cleanliness: 0.4,
+      ink: SignatureInk.original,
+    );
+    final fraction = _opaqueFraction(extracted);
+    expect(fraction, greaterThan(0.015));
+    expect(fraction, lessThan(0.4));
+    expect(_maxAlpha(extracted), greaterThan(150));
+    final ink = _bluestOpaque(extracted);
+    expect(ink.b, greaterThan(ink.r + 12));
+    expect(extracted.getPixel(0, 0).a, lessThan(20));
+  });
 
+  test('writes the signature background comparison', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final clean = await renderBallpointOnPaper(shadow: false, lines: false);
+    final shadow = await renderBallpointOnPaper(shadow: true, lines: false);
+    final lined = await renderBallpointOnPaper(shadow: false, lines: true);
     final cases = [
-      (clean, 0.45, SignatureInk.original),
-      (shadow, 0.55, SignatureInk.black),
-      (lined, 0.72, SignatureInk.blue),
+      (clean, 0.4, SignatureInk.original),
+      (shadow, 0.42, SignatureInk.original),
+      (lined, 0.62, SignatureInk.blue),
     ];
     const cellW = 280;
     const cellH = 180;
@@ -201,6 +217,23 @@ int _maxAlpha(img.Image image) {
     }
   }
   return maxA;
+}
+
+img.Pixel _bluestOpaque(img.Image image) {
+  img.Pixel? chosen;
+  var best = -999;
+  for (var y = 0; y < image.height; y++) {
+    for (var x = 0; x < image.width; x++) {
+      final pixel = image.getPixel(x, y);
+      if (pixel.a < 140) continue;
+      final score = pixel.b.toInt() - pixel.r.toInt();
+      if (score > best) {
+        best = score;
+        chosen = pixel;
+      }
+    }
+  }
+  return chosen!;
 }
 
 img.Pixel _darkestOpaque(img.Image image) {
