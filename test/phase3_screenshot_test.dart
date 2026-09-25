@@ -56,6 +56,33 @@ void main() {
     await _save(tester, 'drive-settings-setup-ar');
 
     await tester.pumpWidget(const SizedBox.shrink());
+    final ready = (await tester.runAsync(
+      () => createHarness(
+        preferences: const {'language_code': 'ar'},
+        driveConfigured: true,
+      ),
+    ))!;
+    addTearDown(ready.dispose);
+    await tester.pumpWidget(
+      RepaintBoundary(key: const Key('shot'), child: ready.app),
+    );
+    await tester.pumpAndSettle();
+    _push(
+      tester,
+      const SettingsScreen(showDriveDeveloperHint: false),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('تسجيل الدخول بحساب Google'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('تسجيل الدخول بحساب Google'), findsOneWidget);
+    expect(find.text('Google Drive غير مُعد بعد'), findsNothing);
+    await _save(tester, 'drive-settings-sign-in-ar');
+
+    await tester.pumpWidget(const SizedBox.shrink());
     final signed = (await tester.runAsync(
       () => createHarness(
         preferences: const {'language_code': 'ar'},
@@ -156,13 +183,17 @@ void main() {
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
     await _save(tester, 'document-drive-uploading-ar');
 
-    final files = [
+    final names = [
       'drive-settings-setup-ar',
+      'drive-settings-sign-in-ar',
       'drive-settings-signed-in-ar',
       'document-drive-ar',
       'document-drive-failed-ar',
       'document-drive-uploading-ar',
-    ].map((name) => File('build/screenshots/phase3/$name.png')).toList();
+    ];
+    final files = names
+        .map((name) => File('build/screenshots/phase3/$name.png'))
+        .toList();
     final bytes = (await tester.runAsync(
       () async => [for (final file in files) await file.readAsBytes()],
     ))!;
@@ -175,23 +206,63 @@ void main() {
         );
       }
     }
+    for (final name in [
+      'document-drive-ar',
+      'document-drive-failed-ar',
+      'document-drive-uploading-ar',
+    ]) {
+      final index = names.indexOf(name);
+      final decoded = img.decodePng(bytes[index])!;
+      var paper = 0;
+      var thumb = 0;
+      for (var y = 280; y < 1480; y += 4) {
+        for (var x = 40; x < 740; x += 4) {
+          final pixel = decoded.getPixel(x, y);
+          final light = pixel.r > 160 && pixel.g > 160 && pixel.b > 140;
+          if (!light) continue;
+          if (y < 1240) {
+            paper++;
+          } else {
+            thumb++;
+          }
+        }
+      }
+      expect(paper, greaterThan(400), reason: '$name has an empty page preview');
+      expect(thumb, greaterThan(20), reason: '$name has an empty thumbnail');
+    }
   });
 }
 
 Future<DocumentRecord> _page(TestHarness harness, String name) {
-  final image = img.Image(width: 480, height: 680, numChannels: 3);
-  img.fill(image, color: img.ColorRgb8(244, 242, 236));
-  for (var line = 0; line < 10; line++) {
+  final image = img.Image(width: 900, height: 1260, numChannels: 3);
+  img.fill(image, color: img.ColorRgb8(250, 248, 242));
+  img.fillRect(
+    image,
+    x1: 70,
+    y1: 70,
+    x2: 830,
+    y2: 150,
+    color: img.ColorRgb8(28, 42, 58),
+  );
+  for (var line = 0; line < 16; line++) {
     img.fillRect(
       image,
-      x1: 40,
-      y1: 70 + line * 48,
-      x2: line.isEven ? 420 : 300,
-      y2: 84 + line * 48,
-      color: img.ColorRgb8(170, 164, 154),
+      x1: 80,
+      y1: 210 + line * 52,
+      x2: line.isEven ? 800 : 560,
+      y2: 228 + line * 52,
+      color: img.ColorRgb8(55, 58, 64),
     );
   }
-  final jpeg = img.encodeJpg(image, quality: 85);
+  img.drawRect(
+    image,
+    x1: 620,
+    y1: 1040,
+    x2: 820,
+    y2: 1160,
+    color: img.ColorRgb8(30, 64, 120),
+  );
+  final jpeg = img.encodeJpg(image, quality: 90);
   return harness.documents.createDocument(
     name: name,
     pages: [

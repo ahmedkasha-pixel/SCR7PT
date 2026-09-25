@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_scope.dart';
 import '../../l10n/app_localizations.dart';
 import 'drive_models.dart';
+import 'drive_sign_in_error.dart';
 
 class DriveSettingsSection extends StatelessWidget {
   const DriveSettingsSection({super.key, this.showDeveloperHint = false});
@@ -154,10 +155,29 @@ class DriveSettingsSection extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     try {
       await AppScope.of(context).drive.signIn();
-    } catch (_) {
+    } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.driveSignInFailed)),
+      final report = describeDriveSignInError(error);
+      if (report.problem == DriveSignInProblem.canceled) return;
+      final message = switch (report.problem) {
+        DriveSignInProblem.developerError => l10n.driveSignInDeveloperError,
+        DriveSignInProblem.wrongClient => l10n.driveSignInWrongClient,
+        DriveSignInProblem.testUser => l10n.driveSignInTestUser,
+        DriveSignInProblem.other => l10n.driveSignInFailedDetail(report.detail),
+        DriveSignInProblem.canceled => l10n.driveSignInFailed,
+      };
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.driveSignInFailed),
+          content: Text(message),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.close),
+            ),
+          ],
+        ),
       );
     }
   }

@@ -123,11 +123,11 @@ PNGs are written to `build/screenshots/`. Those files are gitignored with the re
 
 - Application id: `com.docscan.docscan`.
 - Release signing: `android/key.properties` and `android/app/keystore/scr7pt-release.jks`. Every release APK uses this key. Uninstall an older debug-signed build once before installing it.
-- Google client IDs: `lib/core/google_config.dart` only (`webClientIdPlaceholder` and `iosClientIdPlaceholder`, or `--dart-define=GOOGLE_WEB_CLIENT_ID` / `GOOGLE_IOS_CLIENT_ID`). The iOS URL scheme placeholder is in `ios/Runner/Info.plist`.
+- Google client IDs: `lib/core/google_config.dart` only. The Web client ID is the default there, so a release build does not need a dart-define. Override with `--dart-define=GOOGLE_WEB_CLIENT_ID` or `webClientIdPlaceholder`. The iOS URL scheme placeholder is in `ios/Runner/Info.plist`.
 
 ## Google Drive
 
-Drive uses scope `https://www.googleapis.com/auth/drive.file` (files this app created). There is no backend. Until the Web client ID is pasted into `lib/core/google_config.dart`, Settings shows “Google Drive is not set up yet” and does not call Google.
+Drive uses scope `https://www.googleapis.com/auth/drive.file` (files this app created). There is no backend. The Web client ID in `lib/core/google_config.dart` is the release default, so Settings shows Sign in. Clearing that ID returns the “not set up” card and skips Google.
 
 Enable the Google Drive API. OAuth consent: External, Testing, add your Gmail as a test user, and add the `drive.file` scope. Create an Android OAuth client for `com.docscan.docscan` with the release SHA-1, and a Web client whose ID is `serverClientId`. An iOS client comes later; its reversed ID replaces `YOUR_IOS_CLIENT_ID_PREFIX` in `Info.plist`.
 

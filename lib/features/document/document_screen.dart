@@ -34,6 +34,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
   late DocumentRecord _document = widget.document;
   List<PageRecord> _pages = const [];
   final Map<String, Uint8List> _stamped = {};
+  final Map<String, Uint8List> _pageBytes = {};
   int _index = 0;
   bool _loading = true;
   final _controller = PageController();
@@ -44,6 +45,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
     final seeded = widget.initialPages;
     if (seeded != null) {
       _pages = seeded;
+      _rememberPages(seeded);
       _loading = false;
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
@@ -79,6 +81,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
       Navigator.pop(context);
       return;
     }
+    _rememberPages(pages);
     setState(() {
       _document = document;
       _pages = pages;
@@ -219,11 +222,11 @@ class _DocumentScreenState extends State<DocumentScreen> {
                                 width: 2,
                               ),
                             ),
-                            child: Image.file(
-                              File(_pages[index].processedPath),
+                            child: _pagePreview(
+                              _pages[index],
+                              fit: BoxFit.cover,
                               width: 48,
                               height: 64,
-                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
@@ -274,12 +277,47 @@ class _DocumentScreenState extends State<DocumentScreen> {
     );
   }
 
-  Widget _pageImage(PageRecord page) {
-    final stamped = _stamped[page.id];
-    if (stamped != null) {
-      return Image.memory(stamped, fit: BoxFit.contain);
+  void _rememberPages(List<PageRecord> pages) {
+    final live = {for (final page in pages) page.id};
+    _pageBytes.removeWhere((id, _) => !live.contains(id));
+    for (final page in pages) {
+      if (_pageBytes.containsKey(page.id)) continue;
+      final file = File(page.processedPath);
+      if (!file.existsSync()) continue;
+      try {
+        _pageBytes[page.id] = file.readAsBytesSync();
+      } on FileSystemException {
+        continue;
+      }
     }
-    return Image.file(File(page.processedPath), fit: BoxFit.contain);
+  }
+
+  Widget _pagePreview(
+    PageRecord page, {
+    required BoxFit fit,
+    double? width,
+    double? height,
+  }) {
+    final bytes = _stamped[page.id] ?? _pageBytes[page.id];
+    if (bytes != null) {
+      return Image.memory(
+        bytes,
+        fit: fit,
+        width: width,
+        height: height,
+        gaplessPlayback: true,
+      );
+    }
+    return Image.file(
+      File(page.processedPath),
+      fit: fit,
+      width: width,
+      height: height,
+    );
+  }
+
+  Widget _pageImage(PageRecord page) {
+    return _pagePreview(page, fit: BoxFit.contain);
   }
 
   Future<void> _refreshStamps() async {

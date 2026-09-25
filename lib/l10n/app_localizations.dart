@@ -950,6 +950,30 @@ abstract class AppLocalizations {
   /// **'Google sign-in did not finish'**
   String get driveSignInFailed;
 
+  /// No description provided for @driveSignInDeveloperError.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in failed with developer error 10 (DEVELOPER_ERROR). The package name or the release SHA-1 does not match the Android OAuth client, or the Web client ID is not a Web application client.'**
+  String get driveSignInDeveloperError;
+
+  /// No description provided for @driveSignInWrongClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in failed because the client ID is not a Web application client. An Android client ID cannot be used here.'**
+  String get driveSignInWrongClient;
+
+  /// No description provided for @driveSignInTestUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in failed because this Google account is not a test user. Add it on the OAuth consent screen (External, Testing), then try again.'**
+  String get driveSignInTestUser;
+
+  /// No description provided for @driveSignInFailedDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in did not finish. Send this detail:\n{detail}'**
+  String driveSignInFailedDetail(String detail);
+
   /// No description provided for @driveAutoUpload.
   ///
   /// In en, this message translates to:

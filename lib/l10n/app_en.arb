@@ -173,6 +173,15 @@
   "driveSignOut": "Sign out",
   "driveSignedOut": "Sign in to save documents into your Drive.",
   "driveSignInFailed": "Google sign-in did not finish",
+  "driveSignInDeveloperError": "Sign-in failed with developer error 10 (DEVELOPER_ERROR). The package name or the release SHA-1 does not match the Android OAuth client, or the Web client ID is not a Web application client.",
+  "driveSignInWrongClient": "Sign-in failed because the client ID is not a Web application client. An Android client ID cannot be used here.",
+  "driveSignInTestUser": "Sign-in failed because this Google account is not a test user. Add it on the OAuth consent screen (External, Testing), then try again.",
+  "driveSignInFailedDetail": "Google sign-in did not finish. Send this detail:\n{detail}",
+  "@driveSignInFailedDetail": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
   "driveAutoUpload": "Auto-upload new documents",
   "driveWifiOnly": "Upload over Wi-Fi only",
   "driveFolderHint": "Files are saved in a Drive folder named SCR7PT. App folders become subfolders.",

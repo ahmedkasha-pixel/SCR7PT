@@ -480,6 +480,23 @@ class AppLocalizationsAr extends AppLocalizations {
   String get driveSignInFailed => 'لم يكتمل تسجيل الدخول إلى Google';
 
   @override
+  String get driveSignInDeveloperError =>
+      'فشل تسجيل الدخول بخطأ المطوّر 10 (DEVELOPER_ERROR). اسم الحزمة أو بصمة SHA-1 لمفتاح الإصدار لا يطابق عميل Android، أو أن معرّف الويب ليس عميل تطبيق ويب.';
+
+  @override
+  String get driveSignInWrongClient =>
+      'فشل تسجيل الدخول لأن معرّف العميل ليس عميل تطبيق ويب. لا يمكن استخدام معرّف عميل Android هنا.';
+
+  @override
+  String get driveSignInTestUser =>
+      'فشل تسجيل الدخول لأن حساب Google هذا ليس ضمن مستخدمي الاختبار. أضفه في شاشة موافقة OAuth (External، وضع Testing) ثم أعد المحاولة.';
+
+  @override
+  String driveSignInFailedDetail(String detail) {
+    return 'لم يكتمل تسجيل الدخول إلى Google. أرسل هذه التفاصيل:\n$detail';
+  }
+
+  @override
   String get driveAutoUpload => 'رفع المستندات الجديدة تلقائياً';
 
   @override

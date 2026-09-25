@@ -142,6 +142,15 @@
   "driveSignOut": "تسجيل الخروج",
   "driveSignedOut": "سجّل الدخول لحفظ المستندات في Drive.",
   "driveSignInFailed": "لم يكتمل تسجيل الدخول إلى Google",
+  "driveSignInDeveloperError": "فشل تسجيل الدخول بخطأ المطوّر 10 (DEVELOPER_ERROR). اسم الحزمة أو بصمة SHA-1 لمفتاح الإصدار لا يطابق عميل Android، أو أن معرّف الويب ليس عميل تطبيق ويب.",
+  "driveSignInWrongClient": "فشل تسجيل الدخول لأن معرّف العميل ليس عميل تطبيق ويب. لا يمكن استخدام معرّف عميل Android هنا.",
+  "driveSignInTestUser": "فشل تسجيل الدخول لأن حساب Google هذا ليس ضمن مستخدمي الاختبار. أضفه في شاشة موافقة OAuth (External، وضع Testing) ثم أعد المحاولة.",
+  "driveSignInFailedDetail": "لم يكتمل تسجيل الدخول إلى Google. أرسل هذه التفاصيل:\n{detail}",
+  "@driveSignInFailedDetail": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
   "driveAutoUpload": "رفع المستندات الجديدة تلقائياً",
   "driveWifiOnly": "الرفع عبر Wi-Fi فقط",
   "driveFolderHint": "تُحفظ الملفات في مجلد Drive باسم SCR7PT، وتصبح مجلدات التطبيق مجلدات فرعية.",

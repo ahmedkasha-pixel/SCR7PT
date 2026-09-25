@@ -478,6 +478,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get driveSignInFailed => 'Google sign-in did not finish';
 
   @override
+  String get driveSignInDeveloperError =>
+      'Sign-in failed with developer error 10 (DEVELOPER_ERROR). The package name or the release SHA-1 does not match the Android OAuth client, or the Web client ID is not a Web application client.';
+
+  @override
+  String get driveSignInWrongClient =>
+      'Sign-in failed because the client ID is not a Web application client. An Android client ID cannot be used here.';
+
+  @override
+  String get driveSignInTestUser =>
+      'Sign-in failed because this Google account is not a test user. Add it on the OAuth consent screen (External, Testing), then try again.';
+
+  @override
+  String driveSignInFailedDetail(String detail) {
+    return 'Google sign-in did not finish. Send this detail:\n$detail';
+  }
+
+  @override
   String get driveAutoUpload => 'Auto-upload new documents';
 
   @override

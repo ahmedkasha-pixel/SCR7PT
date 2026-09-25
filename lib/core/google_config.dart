@@ -1,9 +1,11 @@
 /// The only place Google OAuth client IDs are read from.
 ///
-/// Paste the IDs into the placeholder constants below, or pass them at build
-/// time:
+/// The Web client ID below is the release default, so a plain build signs in
+/// without `--dart-define`. Override it with:
 /// `--dart-define=GOOGLE_WEB_CLIENT_ID=....apps.googleusercontent.com`
 /// `--dart-define=GOOGLE_IOS_CLIENT_ID=....apps.googleusercontent.com`
+///
+/// `webClientIdPlaceholder` still wins when it is non-empty.
 ///
 /// The Android OAuth client is not pasted here. Google matches it from the
 /// package name `com.docscan.docscan` and the release certificate SHA-1.
@@ -11,7 +13,8 @@
 class GoogleConfig {
   static const String webClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
-    defaultValue: '',
+    defaultValue:
+        '759737423939-qpjr70baleq7rnksdr4essgkoogbi1ba.apps.googleusercontent.com',
   );
 
   /// Paste the Web application client ID here.
