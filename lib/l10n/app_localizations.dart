@@ -620,6 +620,18 @@ abstract class AppLocalizations {
   /// **'Documents are stored only on this device until you share them.'**
   String get storageNote;
 
+  /// No description provided for @storageNoteCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy stays on this device, and you can save it to Drive whenever you want.'**
+  String get storageNoteCloud;
+
+  /// No description provided for @storageNoteCloudAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy stays on this device, and new documents upload to Drive automatically.'**
+  String get storageNoteCloudAuto;
+
   /// No description provided for @loadError.
   ///
   /// In en, this message translates to:
@@ -905,8 +917,14 @@ abstract class AppLocalizations {
   /// No description provided for @driveNotSetUpBody.
   ///
   /// In en, this message translates to:
-  /// **'Add the Web client ID in lib/core/google_config.dart, then rebuild the app. Sign-in stays off until that ID is present.'**
+  /// **'Drive saving is not turned on in this build yet. Your documents stay on this device and can still be shared.'**
   String get driveNotSetUpBody;
+
+  /// No description provided for @driveNotSetUpDebug.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer: paste the Web client ID in lib/core/google_config.dart, then rebuild.'**
+  String get driveNotSetUpDebug;
 
   /// No description provided for @driveSignIn.
   ///

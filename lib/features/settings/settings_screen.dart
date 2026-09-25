@@ -1,21 +1,28 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
 import '../../data/models/records.dart';
+import '../../features/drive/drive_controller.dart';
 import '../../l10n/app_localizations.dart';
 import '../drive/drive_settings_section.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.showDriveDeveloperHint = kDebugMode});
+
+  /// Debug builds show where to paste the Web client ID. Release builds do not.
+  final bool showDriveDeveloperHint;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final settings = AppScope.of(context).settings;
+    final scope = AppScope.of(context);
+    final settings = scope.settings;
+    final drive = scope.drive;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
       body: ListenableBuilder(
-        listenable: settings,
+        listenable: Listenable.merge([settings, drive]),
         builder: (context, _) {
           final current = settings.settings;
           return ListView(
@@ -127,10 +134,12 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 28),
-              const DriveSettingsSection(),
+              DriveSettingsSection(
+                showDeveloperHint: showDriveDeveloperHint,
+              ),
               const SizedBox(height: 24),
               Text(
-                l10n.storageNote,
+                _storageNote(l10n, drive),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -140,6 +149,12 @@ class SettingsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _storageNote(AppLocalizations l10n, DriveController drive) {
+    if (drive.account == null) return l10n.storageNote;
+    if (drive.autoUpload) return l10n.storageNoteCloudAuto;
+    return l10n.storageNoteCloud;
   }
 
   String _pageSizeLabel(AppLocalizations l10n, PageSizeMode mode) {

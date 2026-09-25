@@ -100,6 +100,14 @@ class DriveController extends ChangeNotifier {
 
   Future<void> retry(String documentId) => _queue.retry(documentId);
 
+  /// Puts a link straight into the store. Screenshot tests use this to show
+  /// uploading and failed badges without calling the network.
+  @visibleForTesting
+  Future<void> seedLink(DriveLink link) async {
+    await _queue.store.put(link);
+    await _reload();
+  }
+
   Future<void> signIn() async {
     if (!configured) return;
     signingIn = true;

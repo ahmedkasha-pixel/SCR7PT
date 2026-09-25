@@ -5,7 +5,10 @@ import '../../l10n/app_localizations.dart';
 import 'drive_models.dart';
 
 class DriveSettingsSection extends StatelessWidget {
-  const DriveSettingsSection({super.key});
+  const DriveSettingsSection({super.key, this.showDeveloperHint = false});
+
+  /// File-path hint for debug builds. Release screens leave this off.
+  final bool showDeveloperHint;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +36,15 @@ class DriveSettingsSection extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(l10n.driveNotSetUpBody),
+                      if (showDeveloperHint) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.driveNotSetUpDebug,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

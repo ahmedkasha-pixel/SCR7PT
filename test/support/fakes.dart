@@ -133,6 +133,7 @@ Future<TestHarness> createHarness({
   bool driveConfigured = false,
   DriveAccount? driveAccount,
   List<DriveLink> driveLinks = const [],
+  DriveGateway? driveGateway,
 }) async {
   TestWidgetsFlutterBinding.ensureInitialized();
   ensureSqlite();
@@ -161,7 +162,7 @@ Future<TestHarness> createHarness({
     configured: driveConfigured,
     previewAccount: driveAccount,
     store: driveStore,
-    gateway: FakeDriveGateway(),
+    gateway: driveGateway ?? FakeDriveGateway(),
     documents: documents,
     sharer: sharer,
     settings: settings,

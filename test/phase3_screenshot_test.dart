@@ -15,6 +15,11 @@ import 'package:image/image.dart' as img;
 
 import 'support/fakes.dart';
 
+const _account = DriveAccount(
+  email: 'user@gmail.com',
+  displayName: 'محمد العتيبي',
+);
+
 void main() {
   testWidgets('writes phase 3 Arabic Drive screens', (tester) async {
     tester.view.physicalSize = const Size(780, 1688);
@@ -31,7 +36,10 @@ void main() {
       RepaintBoundary(key: const Key('shot'), child: setup.app),
     );
     await tester.pumpAndSettle();
-    _push(tester, const SettingsScreen());
+    _push(
+      tester,
+      const SettingsScreen(showDriveDeveloperHint: false),
+    );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Google Drive غير مُعد بعد'),
@@ -40,6 +48,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Google Drive غير مُعد بعد'), findsOneWidget);
+    expect(find.textContaining('google_config'), findsNothing);
+    expect(
+      find.textContaining('تبقى مستنداتك على هذا الجهاز'),
+      findsOneWidget,
+    );
     await _save(tester, 'drive-settings-setup-ar');
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -61,7 +74,7 @@ void main() {
     _push(tester, const SettingsScreen());
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('الرفع عبر Wi-Fi فقط'),
+      find.text('تبقى نسخة على هذا الجهاز، ويمكنك حفظها في Drive متى شئت.'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
@@ -69,35 +82,15 @@ void main() {
     expect(find.text('user@gmail.com'), findsOneWidget);
     expect(find.text('رفع المستندات الجديدة تلقائياً'), findsOneWidget);
     expect(find.text('الرفع عبر Wi-Fi فقط'), findsOneWidget);
+    expect(
+      find.text('تُحفظ المستندات على هذا الجهاز فقط إلى أن تشاركها.'),
+      findsNothing,
+    );
     await _save(tester, 'drive-settings-signed-in-ar');
 
-    final document = (await tester.runAsync(() async {
-      final image = img.Image(width: 480, height: 680, numChannels: 3);
-      img.fill(image, color: img.ColorRgb8(244, 242, 236));
-      for (var line = 0; line < 10; line++) {
-        img.fillRect(
-          image,
-          x1: 40,
-          y1: 70 + line * 48,
-          x2: line.isEven ? 420 : 300,
-          y2: 84 + line * 48,
-          color: img.ColorRgb8(170, 164, 154),
-        );
-      }
-      final jpeg = img.encodeJpg(image, quality: 85);
-      return signed.documents.createDocument(
-        name: 'عقد الإيجار',
-        pages: [
-          NewPage(
-            id: 'page-1',
-            originalJpeg: jpeg,
-            processedJpeg: jpeg,
-            filter: PageFilter.original,
-            corners: Quad.standard,
-          ),
-        ],
-      );
-    }))!;
+    final document = (await tester.runAsync(
+      () => _page(signed, 'عقد الإيجار'),
+    ))!;
     await tester.runAsync(
       () => signed.app.drive.saveDocument(
         document.id,
@@ -105,19 +98,149 @@ void main() {
         compression: CompressionLevel.medium,
       ),
     );
-    final pages = (await tester.runAsync(
-      () => signed.documents.pagesFor(document.id),
-    ))!;
-    _push(tester, DocumentScreen(document: document, initialPages: pages));
-    await tester.pump();
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 250)),
-    );
-    await tester.pump();
+    await _openDocument(tester, signed, document);
+    expect(find.text('عقد الإيجار'), findsOneWidget);
     expect(find.text('حفظ في Drive'), findsOneWidget);
     expect(find.text('تم الرفع'), findsOneWidget);
     await _save(tester, 'document-drive-ar');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    final failed = (await tester.runAsync(
+      () => createHarness(
+        preferences: const {'language_code': 'ar'},
+        driveConfigured: true,
+        driveAccount: _account,
+        driveGateway: _ThrowingDriveGateway(),
+      ),
+    ))!;
+    addTearDown(failed.dispose);
+    await tester.pumpWidget(
+      RepaintBoundary(key: const Key('shot'), child: failed.app),
+    );
+    await tester.pumpAndSettle();
+    final failedDoc = (await tester.runAsync(
+      () => _page(failed, 'فاتورة الكهرباء'),
+    ))!;
+    await tester.runAsync(
+      () => failed.app.drive.saveDocument(failedDoc.id),
+    );
+    await _openDocument(tester, failed, failedDoc);
+    expect(find.text('فشل الرفع'), findsOneWidget);
+    expect(find.text('إعادة المحاولة'), findsOneWidget);
+    expect(find.text('حفظ في Drive'), findsOneWidget);
+    await _save(tester, 'document-drive-failed-ar');
+
+    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final uploadingDoc = (await tester.runAsync(() async {
+      final created = await _page(failed, 'عقد العمل');
+      await failed.app.drive.seedLink(
+        DriveLink(
+          documentId: created.id,
+          status: DriveSyncStatus.uploading,
+          progress: 0.62,
+          format: ShareFormat.pdf,
+          compression: CompressionLevel.medium,
+          updatedAt: DateTime.utc(2026, 9, 25),
+        ),
+      );
+      return created;
+    }))!;
+    await tester.pump();
+    await _openDocument(tester, failed, uploadingDoc);
+    expect(find.text('عقد العمل'), findsOneWidget);
+    expect(find.text('جارٍ الرفع'), findsOneWidget);
+    expect(find.text('حفظ في Drive'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    await _save(tester, 'document-drive-uploading-ar');
+
+    final files = [
+      'drive-settings-setup-ar',
+      'drive-settings-signed-in-ar',
+      'document-drive-ar',
+      'document-drive-failed-ar',
+      'document-drive-uploading-ar',
+    ].map((name) => File('build/screenshots/phase3/$name.png')).toList();
+    final bytes = (await tester.runAsync(
+      () async => [for (final file in files) await file.readAsBytes()],
+    ))!;
+    for (var i = 0; i < bytes.length; i++) {
+      for (var j = i + 1; j < bytes.length; j++) {
+        expect(
+          _sameBytes(bytes[i], bytes[j]),
+          isFalse,
+          reason: '${files[i].path} matches ${files[j].path}',
+        );
+      }
+    }
   });
+}
+
+Future<DocumentRecord> _page(TestHarness harness, String name) {
+  final image = img.Image(width: 480, height: 680, numChannels: 3);
+  img.fill(image, color: img.ColorRgb8(244, 242, 236));
+  for (var line = 0; line < 10; line++) {
+    img.fillRect(
+      image,
+      x1: 40,
+      y1: 70 + line * 48,
+      x2: line.isEven ? 420 : 300,
+      y2: 84 + line * 48,
+      color: img.ColorRgb8(170, 164, 154),
+    );
+  }
+  final jpeg = img.encodeJpg(image, quality: 85);
+  return harness.documents.createDocument(
+    name: name,
+    pages: [
+      NewPage(
+        id: 'page-$name',
+        originalJpeg: jpeg,
+        processedJpeg: jpeg,
+        filter: PageFilter.original,
+        corners: Quad.standard,
+      ),
+    ],
+  );
+}
+
+Future<void> _openDocument(
+  WidgetTester tester,
+  TestHarness harness,
+  DocumentRecord document,
+) async {
+  final pages = (await tester.runAsync(
+    () => harness.documents.pagesFor(document.id),
+  ))!;
+  _push(tester, DocumentScreen(document: document, initialPages: pages));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 250));
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 300)),
+  );
+  await tester.pump();
+}
+
+class _ThrowingDriveGateway extends FakeDriveGateway {
+  @override
+  Future<List<String>> upload({
+    required List<DrivePart> parts,
+    required List<String> existingFileIds,
+    required String? subfolder,
+    required Future<void> Function(double progress) onProgress,
+  }) async {
+    throw StateError('offline');
+  }
+}
+
+bool _sameBytes(Uint8List a, Uint8List b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
 
 void _push(WidgetTester tester, Widget page) {

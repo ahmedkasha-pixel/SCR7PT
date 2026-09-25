@@ -307,6 +307,14 @@ class AppLocalizationsAr extends AppLocalizations {
       'تُحفظ المستندات على هذا الجهاز فقط إلى أن تشاركها.';
 
   @override
+  String get storageNoteCloud =>
+      'تبقى نسخة على هذا الجهاز، ويمكنك حفظها في Drive متى شئت.';
+
+  @override
+  String get storageNoteCloudAuto =>
+      'تبقى نسخة على هذا الجهاز، وتُرفع المستندات الجديدة تلقائياً إلى Drive.';
+
+  @override
   String get loadError => 'تعذر تحميل المستندات';
 
   @override
@@ -453,7 +461,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get driveNotSetUpBody =>
-      'أضف معرّف عميل الويب في الملف lib/core/google_config.dart ثم أعد بناء التطبيق. يبقى تسجيل الدخول متوقفاً حتى يوجد هذا المعرّف.';
+      'الحفظ في Drive غير مفعّل في هذه النسخة بعد. تبقى مستنداتك على هذا الجهاز ويمكنك مشاركتها كالمعتاد.';
+
+  @override
+  String get driveNotSetUpDebug =>
+      'للمطوّر: أضف معرّف عميل الويب في lib/core/google_config.dart ثم أعد بناء التطبيق.';
 
   @override
   String get driveSignIn => 'تسجيل الدخول بحساب Google';

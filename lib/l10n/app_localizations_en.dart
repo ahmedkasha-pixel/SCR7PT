@@ -302,6 +302,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Documents are stored only on this device until you share them.';
 
   @override
+  String get storageNoteCloud =>
+      'A copy stays on this device, and you can save it to Drive whenever you want.';
+
+  @override
+  String get storageNoteCloudAuto =>
+      'A copy stays on this device, and new documents upload to Drive automatically.';
+
+  @override
   String get loadError => 'Could not load documents';
 
   @override
@@ -451,7 +459,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get driveNotSetUpBody =>
-      'Add the Web client ID in lib/core/google_config.dart, then rebuild the app. Sign-in stays off until that ID is present.';
+      'Drive saving is not turned on in this build yet. Your documents stay on this device and can still be shared.';
+
+  @override
+  String get driveNotSetUpDebug =>
+      'Developer: paste the Web client ID in lib/core/google_config.dart, then rebuild.';
 
   @override
   String get driveSignIn => 'Sign in with Google';
