@@ -3,21 +3,22 @@ import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
 
-/// Removes soft shadows and a global colour cast, then stretches contrast.
+/// Flattens shadows while keeping ink dark and coloured marks coloured.
 ///
-/// The illumination map is built on a downscaled copy: a max filter knocks
-/// out text, a wide blur keeps only the shadow, and the full image is divided
-/// by that map so the paper lands near white without a per-pixel window.
+/// The background is a luminance map: max-pooled to a few hundred pixels,
+/// closed with a text-stroke kernel, then blurred by a pixel or two. Every
+/// channel is divided by that same luminance gain. A second pass compares
+/// each pixel to the local paper again, clips the white point near 0.92, and
+/// stretches neutral tones toward black.
 img.Image autoEnhance(img.Image source) {
-  final divided = _divideByIllumination(source);
-  return _stretch(divided, gamma: 1.05);
+  final rgb = source.convert(format: img.Format.uint8, numChannels: 3);
+  final lifted = _lumaNormalize(rgb, finalize: false);
+  return _lumaNormalize(lifted, finalize: true);
 }
 
 /// Shadow-normalized grayscale. Paper is even; colour is discarded.
 img.Image grayscaleNormalized(img.Image source) {
-  final divided = _divideByIllumination(source);
-  final stretched = _stretch(divided, gamma: 1.0);
-  return _toGray(stretched);
+  return _toGray(autoEnhance(source));
 }
 
 /// Adaptive black-and-white on the shadow-normalized page.
@@ -30,10 +31,18 @@ img.Image blackAndWhiteAdaptive(img.Image source) {
   final luma = Uint8List(view.width * view.height);
   for (var i = 0; i < luma.length; i++) {
     final index = i * view.channels;
-    luma[i] = _luma(view.bytes[index], view.bytes[index + 1], view.bytes[index + 2]);
+    luma[i] = _luma(
+      view.bytes[index],
+      view.bytes[index + 1],
+      view.bytes[index + 2],
+    );
   }
   final threshold = _sauvolaThreshold(luma, view.width, view.height);
-  final output = img.Image(width: view.width, height: view.height, numChannels: 3);
+  final output = img.Image(
+    width: view.width,
+    height: view.height,
+    numChannels: 3,
+  );
   final dest = _Rgb(output);
   final mapW = threshold.width;
   final mapH = threshold.height;
@@ -62,21 +71,27 @@ img.Image _divideByIllumination(img.Image source) {
   final maps = <Uint8List>[];
   for (var channel = 0; channel < 3; channel++) {
     final plane = _downsample(view, channel, mapW, mapH);
-    final closed = _minFilter(_maxFilter(plane, mapW, mapH, radius), mapW, mapH, radius);
+    final closed = _minFilter(
+      _maxFilter(plane, mapW, mapH, radius),
+      mapW,
+      mapH,
+      radius,
+    );
     maps.add(_boxBlur(closed, mapW, mapH, blur, passes: 3));
   }
 
-  final output = img.Image(width: view.width, height: view.height, numChannels: 3);
+  final output = img.Image(
+    width: view.width,
+    height: view.height,
+    numChannels: 3,
+  );
   final dest = _Rgb(output);
   for (var y = 0; y < view.height; y++) {
     final fy = (y + 0.5) * mapH / view.height - 0.5;
     for (var x = 0; x < view.width; x++) {
       final fx = (x + 0.5) * mapW / view.width - 0.5;
       for (var channel = 0; channel < 3; channel++) {
-        final illum = math.max(
-          16,
-          _sample(maps[channel], mapW, mapH, fx, fy),
-        );
+        final illum = math.max(16, _sample(maps[channel], mapW, mapH, fx, fy));
         final value = (view.channel(x, y, channel) * 255 / illum).round();
         dest.setChannel(x, y, channel, value);
       }
@@ -85,46 +100,96 @@ img.Image _divideByIllumination(img.Image source) {
   return output;
 }
 
-img.Image _stretch(img.Image source, {required double gamma}) {
+/// One illumination pass. [finalize] clips paper to white and darkens ink.
+img.Image _lumaNormalize(img.Image source, {required bool finalize}) {
   final view = _Rgb(source);
-  final hist = List<int>.filled(256, 0);
+  final luma = Uint8List(view.width * view.height);
   for (var y = 0; y < view.height; y++) {
     for (var x = 0; x < view.width; x++) {
-      hist[view.luma(x, y)]++;
+      luma[y * view.width + x] = view.luma(x, y);
     }
   }
-  final total = view.width * view.height;
-  final low = _percentile(hist, total, 0.004);
-  final high = _percentile(hist, total, 0.99);
-  if (high - low < 16) {
-    return gamma == 1 ? source : _gamma(source, gamma);
-  }
-  final span = high - low;
-  final output = img.Image(width: view.width, height: view.height, numChannels: 3);
+  final map = _textScaleBackground(luma, view.width, view.height);
+  final output = img.Image(
+    width: view.width,
+    height: view.height,
+    numChannels: 3,
+  );
   final dest = _Rgb(output);
   for (var y = 0; y < view.height; y++) {
+    final fy = (y + 0.5) * map.height / view.height - 0.5;
     for (var x = 0; x < view.width; x++) {
-      final luma = view.luma(x, y);
-      var next = ((luma - low) * 255 / span).clamp(0, 255).toDouble();
-      if (gamma != 1) {
-        next = math.pow(next / 255, gamma) * 255;
+      final fx = (x + 0.5) * map.width / view.width - 0.5;
+      final bg = math.max(
+        8,
+        _sample(map.values, map.width, map.height, fx, fy),
+      );
+      final red = view.r(x, y);
+      final green = view.g(x, y);
+      final blue = view.b(x, y);
+      final tone = math.max(1, _luma(red, green, blue));
+      final chroma =
+          math.max(red, math.max(green, blue)) -
+          math.min(red, math.min(green, blue));
+      final ratio = tone / bg;
+      final double outLuma;
+      if (finalize && chroma < 72 && ratio >= 0.92) {
+        dest.set(x, y, 255, 255, 255);
+        continue;
+      } else if (finalize && chroma < 72) {
+        final t = (ratio / 0.92).clamp(0.0, 1.0);
+        outLuma = math.pow(t, 2.6) * 255;
+      } else {
+        outLuma = (tone * 255 / bg).clamp(0.0, 255.0);
       }
-      final factor = luma == 0 ? 0.0 : next / luma;
+      final gain = outLuma / tone;
       dest.set(
         x,
         y,
-        (view.r(x, y) * factor).round(),
-        (view.g(x, y) * factor).round(),
-        (view.b(x, y) * factor).round(),
+        (red * gain).round(),
+        (green * gain).round(),
+        (blue * gain).round(),
       );
     }
   }
   return output;
 }
 
+/// Luminance background at long side 256–400. Closing radius matches a text
+/// stroke; the blur is only a couple of map pixels so a shadow edge stays put.
+_Illum _textScaleBackground(Uint8List luma, int width, int height) {
+  final longEdge = math.max(width, height);
+  final mapLong = longEdge <= 400 ? longEdge : 360;
+  final scale = mapLong / longEdge;
+  final mapW = math.max(1, (width * scale).round());
+  final mapH = math.max(1, (height * scale).round());
+  final pooled = _downsampleMaxLuma(luma, width, height, mapW, mapH);
+  // ~14 px on the original is enough to close strokes without bridging a shadow.
+  final radius = math.max(2, (14 * mapLong / longEdge).round());
+  final closed = _minFilter(
+    _maxFilter(pooled, mapW, mapH, radius),
+    mapW,
+    mapH,
+    radius,
+  );
+  final blurred = _boxBlur(closed, mapW, mapH, 1);
+  return _Illum(blurred, mapW, mapH);
+}
+
+class _Illum {
+  _Illum(this.values, this.width, this.height);
+  final Uint8List values;
+  final int width;
+  final int height;
+}
+
 img.Image _toGray(img.Image source) {
   final view = _Rgb(source);
-  final output = img.Image(width: view.width, height: view.height, numChannels: 3);
+  final output = img.Image(
+    width: view.width,
+    height: view.height,
+    numChannels: 3,
+  );
   final dest = _Rgb(output);
   for (var y = 0; y < view.height; y++) {
     for (var x = 0; x < view.width; x++) {
@@ -199,14 +264,59 @@ Uint8List _downsample(_Rgb view, int channel, int mapW, int mapH) {
   return dest;
 }
 
-Uint8List _downsampleLuma(Uint8List src, int width, int height, int mapW, int mapH) {
+Uint8List _downsampleMaxLuma(
+  Uint8List src,
+  int width,
+  int height,
+  int mapW,
+  int mapH,
+) {
   final dest = Uint8List(mapW * mapH);
   for (var y = 0; y < mapH; y++) {
     final y0 = (y * height / mapH).floor();
-    final y1 = math.min(height, math.max(y0 + 1, ((y + 1) * height / mapH).ceil()));
+    final y1 = math.min(
+      height,
+      math.max(y0 + 1, ((y + 1) * height / mapH).ceil()),
+    );
     for (var x = 0; x < mapW; x++) {
       final x0 = (x * width / mapW).floor();
-      final x1 = math.min(width, math.max(x0 + 1, ((x + 1) * width / mapW).ceil()));
+      final x1 = math.min(
+        width,
+        math.max(x0 + 1, ((x + 1) * width / mapW).ceil()),
+      );
+      var maxValue = 0;
+      for (var py = y0; py < y1; py++) {
+        for (var px = x0; px < x1; px++) {
+          final value = src[py * width + px];
+          if (value > maxValue) maxValue = value;
+        }
+      }
+      dest[y * mapW + x] = maxValue;
+    }
+  }
+  return dest;
+}
+
+Uint8List _downsampleLuma(
+  Uint8List src,
+  int width,
+  int height,
+  int mapW,
+  int mapH,
+) {
+  final dest = Uint8List(mapW * mapH);
+  for (var y = 0; y < mapH; y++) {
+    final y0 = (y * height / mapH).floor();
+    final y1 = math.min(
+      height,
+      math.max(y0 + 1, ((y + 1) * height / mapH).ceil()),
+    );
+    for (var x = 0; x < mapW; x++) {
+      final x0 = (x * width / mapW).floor();
+      final x1 = math.min(
+        width,
+        math.max(x0 + 1, ((x + 1) * width / mapW).ceil()),
+      );
       var sum = 0;
       var count = 0;
       for (var py = y0; py < y1; py++) {
@@ -265,7 +375,13 @@ Uint8List _extremum(
   return dest;
 }
 
-Uint8List _boxBlur(Uint8List src, int width, int height, int radius, {int passes = 1}) {
+Uint8List _boxBlur(
+  Uint8List src,
+  int width,
+  int height,
+  int radius, {
+  int passes = 1,
+}) {
   var current = src;
   for (var pass = 0; pass < passes; pass++) {
     final temp = Uint8List(current.length);
@@ -336,33 +452,6 @@ int _sample(Uint8List map, int width, int height, double x, double y) {
       map[y1 * width + x0] * (1 - dx) * dy +
       map[y1 * width + x1] * dx * dy;
   return value.round().clamp(0, 255);
-}
-
-img.Image _gamma(img.Image source, double gamma) {
-  final view = _Rgb(source);
-  final output = img.Image(width: view.width, height: view.height, numChannels: 3);
-  final dest = _Rgb(output);
-  for (var y = 0; y < view.height; y++) {
-    for (var x = 0; x < view.width; x++) {
-      int bend(int channel) {
-        final next = math.pow(channel / 255, gamma) * 255;
-        return next.round();
-      }
-
-      dest.set(x, y, bend(view.r(x, y)), bend(view.g(x, y)), bend(view.b(x, y)));
-    }
-  }
-  return output;
-}
-
-int _percentile(List<int> hist, int total, double fraction) {
-  final target = (total * fraction).round().clamp(0, total - 1);
-  var seen = 0;
-  for (var value = 0; value < hist.length; value++) {
-    seen += hist[value];
-    if (seen > target) return value;
-  }
-  return 255;
 }
 
 int _luma(int r, int g, int b) => (0.299 * r + 0.587 * g + 0.114 * b).round();
