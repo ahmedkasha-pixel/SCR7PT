@@ -26,6 +26,7 @@ dependencies:
   googleapis: ^17.0.0
   extension_google_sign_in_as_googleapis_auth: ^3.0.0
   connectivity_plus: ^7.3.1
+  flutter_tesseract_ocr: 0.4.31
 
 dev_dependencies:
   flutter_test:
@@ -43,6 +44,8 @@ flutter:
     - assets/brand/logo-light.svg
     - assets/brand/logo-dark.svg
     - assets/brand/icon-1024.png
+    - assets/tessdata_config.json
+    - assets/tessdata/
   fonts:
     - family: IBMPlexSansArabic
       fonts:

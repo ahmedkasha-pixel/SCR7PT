@@ -131,7 +131,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchHint.
   ///
   /// In en, this message translates to:
-  /// **'Search by name'**
+  /// **'Search documents'**
   String get searchHint;
 
   /// No description provided for @searchResults.
@@ -143,8 +143,26 @@ abstract class AppLocalizations {
   /// No description provided for @noSearchResults.
   ///
   /// In en, this message translates to:
-  /// **'No documents with that name'**
+  /// **'No matching documents'**
   String get noSearchResults;
+
+  /// No description provided for @searchInPages.
+  ///
+  /// In en, this message translates to:
+  /// **'In the pages'**
+  String get searchInPages;
+
+  /// No description provided for @searchPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page}'**
+  String searchPage(int page);
+
+  /// No description provided for @searchIndexing.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating search inside pages'**
+  String get searchIndexing;
 
   /// No description provided for @emptyHomeTitle.
   ///

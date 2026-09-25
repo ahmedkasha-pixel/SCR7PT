@@ -25,13 +25,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recent => 'Recent';
 
   @override
-  String get searchHint => 'Search by name';
+  String get searchHint => 'Search documents';
 
   @override
   String get searchResults => 'Search results';
 
   @override
-  String get noSearchResults => 'No documents with that name';
+  String get noSearchResults => 'No matching documents';
+
+  @override
+  String get searchInPages => 'In the pages';
+
+  @override
+  String searchPage(int page) {
+    return 'Page $page';
+  }
+
+  @override
+  String get searchIndexing => 'Updating search inside pages';
 
   @override
   String get emptyHomeTitle => 'No documents yet';

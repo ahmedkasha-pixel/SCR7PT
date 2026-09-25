@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,7 +13,9 @@ import 'data/repositories/document_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/repositories/signature_repository.dart';
 import 'core/google_config.dart';
+import 'core/ocr/page_ocr.dart';
 import 'data/storage/file_store.dart';
+import 'features/search/page_indexer.dart';
 import 'features/drive/drive_controller.dart';
 import 'features/drive/drive_store.dart';
 import 'features/drive/google_drive_gateway.dart';
@@ -43,12 +46,21 @@ Future<void> main() async {
     settings: settings,
   );
   documents.onDocumentChanged = drive.considerAutoUpload;
+  final library = LibraryController(documents);
+  final indexer = PageIndexer(
+    documents: documents,
+    ocr: TesseractPageOcr(),
+    onIndexed: library.upsertIndexed,
+    onIndexing: library.setIndexing,
+  );
+  documents.onPagesReady = indexer.enqueue;
+  unawaited(indexer.backfill());
   await drive.start(
     monitor: GoogleConfig.isConfigured ? PluginNetworkMonitor() : null,
   );
   runApp(
     DocScanApp(
-      library: LibraryController(documents),
+      library: library,
       settings: settings,
       documents: documents,
       signatures: signatures,

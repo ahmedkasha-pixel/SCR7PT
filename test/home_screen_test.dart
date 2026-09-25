@@ -92,7 +92,7 @@ void main() {
 
     await tester.enterText(find.byKey(const Key('search-field')), 'missing');
     await _settle(tester);
-    expect(find.text('No documents with that name'), findsOneWidget);
+    expect(find.text('No matching documents'), findsOneWidget);
   });
 
   testWidgets('settings switches language and the default share format', (

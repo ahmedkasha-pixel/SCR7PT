@@ -112,9 +112,18 @@ class DocScanApp extends StatelessWidget {
                     (_) => ScanFlow(folderId: route.arguments as String?),
                   );
                 case '/document':
+                  final arguments = route.arguments;
+                  if (arguments is DocumentOpenRequest) {
+                    return _route(
+                      (_) => DocumentScreen(
+                        document: arguments.document,
+                        initialPage: arguments.initialPage,
+                      ),
+                    );
+                  }
                   return _route(
                     (_) => DocumentScreen(
-                      document: route.arguments! as DocumentRecord,
+                      document: arguments! as DocumentRecord,
                     ),
                   );
               }

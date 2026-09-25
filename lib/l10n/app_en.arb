@@ -5,9 +5,17 @@
   "homeTitle": "Documents",
   "folders": "Folders",
   "recent": "Recent",
-  "searchHint": "Search by name",
+  "searchHint": "Search documents",
   "searchResults": "Search results",
-  "noSearchResults": "No documents with that name",
+  "noSearchResults": "No matching documents",
+  "searchInPages": "In the pages",
+  "searchPage": "Page {page}",
+  "@searchPage": {
+    "placeholders": {
+      "page": {"type": "int"}
+    }
+  },
+  "searchIndexing": "Updating search inside pages",
   "emptyHomeTitle": "No documents yet",
   "emptyHomeBody": "Scan a page or import a photo. Files stay on this device.",
   "emptyFolderTitle": "This folder is empty",

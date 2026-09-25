@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
+import '../../core/search/content_search.dart';
 import '../../data/models/records.dart';
 import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_theme.dart';
@@ -137,8 +138,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                if (library.searching)
-                  ..._searchSlivers(context, library.searchResults)
+                if (library.indexingPages > 0)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                      child: Text(
+                        l10n.searchIndexing,
+                        key: const Key('search-indexing'),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (library.searching) ..._searchSlivers(context)
                 else ...[
                   SliverToBoxAdapter(
                     child: _sectionTitle(context, l10n.folders),
@@ -181,12 +194,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<Widget> _searchSlivers(
-    BuildContext context,
-    List<DocumentRecord> results,
-  ) {
+  List<Widget> _searchSlivers(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    if (results.isEmpty) {
+    final hits = AppScope.of(context).library.searchHits;
+    if (hits.isEmpty) {
       return [
         SliverToBoxAdapter(
           child: EmptyState(
@@ -197,15 +208,27 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ];
     }
+    final names = [for (final hit in hits) if (hit.nameMatch) hit];
+    final pages = [for (final hit in hits) if (!hit.nameMatch) hit];
     return [
-      SliverToBoxAdapter(child: _sectionTitle(context, l10n.searchResults)),
-      SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => _card(context, results[index]),
-          childCount: results.length,
-        ),
-      ),
+      if (names.isNotEmpty) ...[
+        SliverToBoxAdapter(child: _sectionTitle(context, l10n.searchResults)),
+        _hitList(names),
+      ],
+      if (pages.isNotEmpty) ...[
+        SliverToBoxAdapter(child: _sectionTitle(context, l10n.searchInPages)),
+        _hitList(pages),
+      ],
     ];
+  }
+
+  Widget _hitList(List<SearchHit> hits) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => _hitCard(context, hits[index]),
+        childCount: hits.length,
+      ),
+    );
   }
 
   Widget _sectionTitle(BuildContext context, String text) {
@@ -255,10 +278,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _card(BuildContext context, DocumentRecord document) {
+    return _hitCard(
+      context,
+      SearchHit(document: document, nameMatch: true),
+    );
+  }
+
+  Widget _hitCard(BuildContext context, SearchHit hit) {
+    final l10n = AppLocalizations.of(context);
+    final document = hit.document;
+    final page = hit.pageNumber;
     return DocumentCard(
       key: ValueKey('doc-${document.id}'),
       document: document,
-      onOpen: () => _openDocument(document),
+      snippet: hit.nameMatch || hit.snippet.isEmpty ? null : hit.snippet,
+      highlightStart: hit.highlightStart,
+      highlightEnd: hit.highlightEnd,
+      pageLabel: hit.nameMatch || page == null ? null : l10n.searchPage(page),
+      onOpen: () => _openDocument(
+        document,
+        pageIndex: hit.nameMatch ? null : hit.pageIndex,
+      ),
       onRename: () => _renameDocument(document),
       onMove: () => _moveDocument(document),
       onShare: () => shareDocument(context, document),
@@ -271,8 +311,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) await AppScope.of(context).library.refresh();
   }
 
-  Future<void> _openDocument(DocumentRecord document) async {
-    await Navigator.pushNamed(context, '/document', arguments: document);
+  Future<void> _openDocument(
+    DocumentRecord document, {
+    int? pageIndex,
+  }) async {
+    await Navigator.pushNamed(
+      context,
+      '/document',
+      arguments: pageIndex == null
+          ? document
+          : DocumentOpenRequest(document: document, initialPage: pageIndex),
+    );
     if (mounted) await AppScope.of(context).library.refresh();
   }
 

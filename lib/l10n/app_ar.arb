@@ -5,9 +5,17 @@
   "homeTitle": "المستندات",
   "folders": "المجلدات",
   "recent": "الأحدث",
-  "searchHint": "ابحث باسم المستند",
+  "searchHint": "ابحث في المستندات",
   "searchResults": "نتائج البحث",
-  "noSearchResults": "لا توجد مستندات بهذا الاسم",
+  "noSearchResults": "لا توجد مستندات مطابقة",
+  "searchInPages": "داخل الصفحات",
+  "searchPage": "صفحة {page}",
+  "@searchPage": {
+    "placeholders": {
+      "page": {"type": "int"}
+    }
+  },
+  "searchIndexing": "يجري تحديث البحث داخل الصفحات",
   "emptyHomeTitle": "لا توجد مستندات بعد",
   "emptyHomeBody": "امسح ورقة أو استورد صورة. الملفات تبقى على هذا الجهاز.",
   "emptyFolderTitle": "هذا المجلد فارغ",

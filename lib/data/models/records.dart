@@ -32,6 +32,14 @@ class FolderRecord {
   final int documentCount;
 }
 
+/// Opens a document on a specific page from a content search hit.
+class DocumentOpenRequest {
+  const DocumentOpenRequest({required this.document, this.initialPage = 0});
+
+  final DocumentRecord document;
+  final int initialPage;
+}
+
 class DocumentRecord {
   const DocumentRecord({
     required this.id,

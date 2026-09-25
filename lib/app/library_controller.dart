@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/search/content_search.dart';
 import '../data/models/records.dart';
 import '../data/repositories/document_repository.dart';
 
@@ -15,7 +16,13 @@ class LibraryController extends ChangeNotifier {
   List<DocumentRecord> recent = const [];
   List<DocumentRecord> catalog = const [];
   List<DocumentRecord> searchResults = const [];
+  List<IndexedPage> indexed = const [];
+  List<SearchHit> searchHits = const [];
+  int indexingPages = 0;
   int _generation = 0;
+
+  /// Pages saved while a refresh was waiting on SQLite.
+  final List<IndexedPage> _pendingIndexed = [];
 
   bool get searching => query.trim().isNotEmpty;
 
@@ -31,11 +38,18 @@ class LibraryController extends ChangeNotifier {
     try {
       final loadedFolders = await documents.listFolders();
       final loadedCatalog = await documents.allDocuments();
+      final loadedIndexed = await documents.indexedPages();
       if (generation != _generation) return;
       folders = loadedFolders;
       catalog = loadedCatalog;
       recent = loadedCatalog.take(20).toList();
-      searchResults = _match(query, loadedCatalog);
+      final byId = {for (final page in loadedIndexed) page.pageId: page};
+      for (final page in _pendingIndexed) {
+        byId[page.pageId] = page;
+      }
+      _pendingIndexed.clear();
+      indexed = byId.values.toList();
+      _applySearch();
       error = null;
     } catch (caught) {
       if (generation != _generation) return;
@@ -50,16 +64,34 @@ class LibraryController extends ChangeNotifier {
 
   void setQuery(String value) {
     query = value;
-    searchResults = _match(query, catalog);
+    _applySearch();
     notifyListeners();
   }
 
-  List<DocumentRecord> _match(String value, List<DocumentRecord> source) {
-    final trimmed = value.trim().toLowerCase();
-    if (trimmed.isEmpty) return const [];
-    return [
-      for (final document in source)
-        if (document.name.toLowerCase().contains(trimmed)) document,
+  void upsertIndexed(IndexedPage page) {
+    _pendingIndexed.add(page);
+    indexed = [
+      for (final existing in indexed)
+        if (existing.pageId != page.pageId) existing,
+      page,
     ];
+    _applySearch();
+    notifyListeners();
+  }
+
+  void setIndexing(int count) {
+    if (indexingPages == count) return;
+    indexingPages = count;
+    notifyListeners();
+  }
+
+  void _applySearch() {
+    if (!searching) {
+      searchHits = const [];
+      searchResults = const [];
+      return;
+    }
+    searchHits = rankSearch(query, catalog, indexed);
+    searchResults = [for (final hit in searchHits) hit.document];
   }
 }

@@ -1,4 +1,8 @@
+import 'package:sqflite/sqflite.dart';
+
 import '../../core/geometry/quad.dart';
+import '../../core/search/arabic_normalize.dart';
+import '../../core/search/content_search.dart';
 import '../db/app_database.dart';
 import '../models/records.dart';
 import '../storage/file_store.dart';
@@ -17,6 +21,9 @@ class DocumentRepository {
 
   /// Fired after a document's pages, name, or folder change.
   void Function(String documentId)? onDocumentChanged;
+
+  /// Fired when new or edited page images are ready to read.
+  void Function(List<PageRecord> pages)? onPagesReady;
 
   void _changed(String id) {
     onDocumentChanged?.call(id);
@@ -188,6 +195,8 @@ class DocumentRepository {
       rethrow;
     }
     final saved = await documentById(id);
+    final storedPages = await pagesFor(id);
+    onPagesReady?.call(storedPages);
     _changed(id);
     return saved!;
   }
@@ -220,6 +229,7 @@ class DocumentRepository {
 
   Future<void> deleteDocument(String id) async {
     final db = await _database.database;
+    await _deleteFtsForDocument(db, id);
     await db.delete('documents', where: 'id = ?', whereArgs: [id]);
     await _files.deleteDocument(id);
   }
@@ -268,6 +278,12 @@ class DocumentRepository {
       where: 'id = ?',
       whereArgs: [documentId],
     );
+    final stored = await pagesFor(documentId);
+    PageRecord? updated;
+    for (final page in stored) {
+      if (page.id == pageId) updated = page;
+    }
+    if (updated != null) onPagesReady?.call([updated]);
     _changed(documentId);
   }
 
@@ -282,6 +298,12 @@ class DocumentRepository {
           {'position': index},
           where: 'id = ? AND document_id = ?',
           whereArgs: [orderedIds[index], documentId],
+        );
+        await txn.update(
+          'page_text',
+          {'position': index},
+          where: 'page_id = ?',
+          whereArgs: [orderedIds[index]],
         );
       }
       await txn.update(
@@ -307,6 +329,7 @@ class DocumentRepository {
     final documentId = rows.first['document_id'] as String;
     final original = rows.first['original_path'] as String;
     final processed = rows.first['processed_path'] as String;
+    await _deleteFtsForPage(db, pageId);
     await db.delete('pages', where: 'id = ?', whereArgs: [pageId]);
     await _files.deleteFile(original);
     await _files.deleteFile(processed);
@@ -326,6 +349,111 @@ class DocumentRepository {
       for (final row in remaining) row['id'] as String,
     ]);
     return false;
+  }
+
+  Future<IndexedPage> savePageText({
+    required String pageId,
+    required String documentId,
+    required int position,
+    required String rawText,
+  }) async {
+    final db = await _database.database;
+    final normalized = normalizeForSearch(rawText);
+    final digits = extractDigitRuns(rawText).map((run) => run.digits).join(' ');
+    await _deleteFtsForPage(db, pageId);
+    final rowid = await db.insert('page_fts', {
+      'normalized': normalized,
+      'page_id': pageId,
+      'document_id': documentId,
+    });
+    await db.insert('page_text', {
+      'page_id': pageId,
+      'document_id': documentId,
+      'position': position,
+      'raw_text': rawText,
+      'normalized': normalized,
+      'digits': digits,
+      'fts_rowid': rowid,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    return IndexedPage(
+      pageId: pageId,
+      documentId: documentId,
+      position: position,
+      raw: rawText,
+      normalized: normalized,
+      digits: digits,
+    );
+  }
+
+  Future<List<IndexedPage>> indexedPages() async {
+    final db = await _database.database;
+    final rows = await db.query('page_text', orderBy: 'position ASC');
+    return [
+      for (final row in rows)
+        IndexedPage(
+          pageId: row['page_id'] as String,
+          documentId: row['document_id'] as String,
+          position: row['position'] as int,
+          raw: row['raw_text'] as String,
+          normalized: row['normalized'] as String,
+          digits: row['digits'] as String,
+        ),
+    ];
+  }
+
+  Future<List<PageRecord>> pagesWithoutText() async {
+    final db = await _database.database;
+    final rows = await db.rawQuery('''
+      SELECT p.* FROM pages p
+      LEFT JOIN page_text t ON t.page_id = p.id
+      WHERE t.page_id IS NULL
+      ORDER BY p.created_at ASC
+    ''');
+    return rows.map(_pageFromRow).toList();
+  }
+
+  Future<List<String>> pageIdsMatchingFts(String match) async {
+    final db = await _database.database;
+    final rows = await db.rawQuery(
+      'SELECT page_id FROM page_fts WHERE page_fts MATCH ?',
+      [match],
+    );
+    return [for (final row in rows) row['page_id'] as String];
+  }
+
+  Future<void> _deleteFtsForDocument(Database db, String documentId) async {
+    final rows = await db.query(
+      'page_text',
+      columns: ['fts_rowid'],
+      where: 'document_id = ?',
+      whereArgs: [documentId],
+    );
+    for (final row in rows) {
+      final rowid = row['fts_rowid'] as int?;
+      if (rowid == null) continue;
+      await db.rawDelete('DELETE FROM page_fts WHERE rowid = ?', [rowid]);
+    }
+    await db.delete(
+      'page_text',
+      where: 'document_id = ?',
+      whereArgs: [documentId],
+    );
+  }
+
+  Future<void> _deleteFtsForPage(Database db, String pageId) async {
+    final rows = await db.query(
+      'page_text',
+      columns: ['fts_rowid'],
+      where: 'page_id = ?',
+      whereArgs: [pageId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    final rowid = rows.first['fts_rowid'] as int?;
+    if (rowid != null) {
+      await db.rawDelete('DELETE FROM page_fts WHERE rowid = ?', [rowid]);
+    }
+    await db.delete('page_text', where: 'page_id = ?', whereArgs: [pageId]);
   }
 }
 

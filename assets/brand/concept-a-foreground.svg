@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <g id="mark">
+    <!-- Grey crop bracket, bottom-left, inside the 66dp safe zone. -->
+    <path fill="#94A3B8" d="M22 64h12v12h22v10H22V64z"/>
+    <!-- Blue 7 crop corner, top-right. -->
+    <path fill="#2563EB" d="M58 22h28v34h-10V34l-8-8H58V22z"/>
+    <!-- Folded page. -->
+    <path fill="#F8FAFC" d="M30 40c0-3.2 2.6-5.5 5.8-5.5H56l14 14V74c0 3.2-2.6 5.5-5.8 5.5H35.8C32.6 79.5 30 77.2 30 74V40z"/>
+    <path fill="#E2E8F0" d="M56 34.5V48h13.5z"/>
+    <rect fill="#94A3B8" x="36" y="52" width="18" height="3.2" rx="1.6"/>
+    <rect fill="#94A3B8" x="36" y="59.5" width="13" height="3.2" rx="1.6"/>
+    <!-- Lens: blue ring, navy gap, cyan center. Overlaps the page's lower-right. -->
+    <circle fill="#2563EB" cx="68" cy="68" r="14"/>
+    <circle fill="#0F172A" cx="68" cy="68" r="9.2"/>
+    <circle fill="#06B6D4" cx="68" cy="68" r="5.4"/>
+  </g>
+</svg>

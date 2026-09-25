@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../core/naming/document_name.dart';
+import '../core/theme/app_theme.dart';
 import '../data/models/records.dart';
 import '../l10n/app_localizations.dart';
 
@@ -15,6 +16,10 @@ class DocumentCard extends StatelessWidget {
     required this.onMove,
     required this.onShare,
     required this.onDelete,
+    this.snippet,
+    this.highlightStart = 0,
+    this.highlightEnd = 0,
+    this.pageLabel,
   });
 
   final DocumentRecord document;
@@ -23,6 +28,10 @@ class DocumentCard extends StatelessWidget {
   final VoidCallback onMove;
   final VoidCallback onShare;
   final VoidCallback onDelete;
+  final String? snippet;
+  final int highlightStart;
+  final int highlightEnd;
+  final String? pageLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +66,24 @@ class DocumentCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: scheme.onSurfaceVariant),
                     ),
+                    if (snippet != null && snippet!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      _SnippetText(
+                        text: snippet!,
+                        highlightStart: highlightStart,
+                        highlightEnd: highlightEnd,
+                      ),
+                    ],
+                    if (pageLabel != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        pageLabel!,
+                        key: const Key('search-page'),
+                        maxLines: 1,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: AppColors.accent),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -85,6 +112,45 @@ class DocumentCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SnippetText extends StatelessWidget {
+  const _SnippetText({
+    required this.text,
+    required this.highlightStart,
+    required this.highlightEnd,
+  });
+
+  final String text;
+  final int highlightStart;
+  final int highlightEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final end = highlightEnd.clamp(0, text.length);
+    final start = highlightStart.clamp(0, end);
+    final style = Theme.of(context).textTheme.bodyMedium;
+    return Text.rich(
+      TextSpan(
+        style: style,
+        children: [
+          TextSpan(text: text.substring(0, start)),
+          TextSpan(
+            text: text.substring(start, end),
+            style: style?.copyWith(
+              color: AppColors.accent,
+              fontWeight: FontWeight.w700,
+              backgroundColor: AppColors.accent.withValues(alpha: 0.18),
+            ),
+          ),
+          TextSpan(text: text.substring(end)),
+        ],
+      ),
+      key: const Key('search-snippet'),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

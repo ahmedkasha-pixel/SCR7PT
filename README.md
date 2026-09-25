@@ -8,7 +8,7 @@ The in-app name lives in `lib/core/app_config.dart` (`AppConfig.appName`). The l
 
 - Camera capture with automatic page-edge detection, draggable corners, perspective correction, and four filters: original, grayscale, black & white, and brighten.
 - Multi-page documents: add pages, reorder, delete. Import one or more images from the gallery.
-- Folders: create, rename, delete. Documents: name (default `yyyy-MM-dd HH-mm`), rename, move, delete, search by name.
+- Folders: create, rename, delete. Documents: name (default `yyyy-MM-dd HH-mm`), rename, move, delete, and search by name or by words and numbers inside the pages.
 - Home shows folders, recent documents, and a scan button. Settings cover language, the default share format (PDF or JPG), and page size (Auto, A4, Letter, or Original).
 - Share uses the native share sheet (`share_plus`), so the file can go to WhatsApp, Telegram, mail, or any other installed app. PDFs are built on the device. High, medium, and low compression show the real file size before sharing. Medium is the default.
 
@@ -56,6 +56,14 @@ Not used, on purpose:
 - `opencv_dart` pulls large native libraries and an NDK build. The Dart detector is enough for a bright page on a darker background and stays identical in tests.
 
 Edge detection is a heuristic, not a machine-learning model. A flat or low-contrast frame falls back to a slight inset quad the user can drag.
+
+## Search inside pages
+
+After a page is captured, imported, or re-edited, Tesseract reads it on the device (`ara+eng`, page segmentation mode 6). Google ML Kit Text Recognition v2 is not used: it has no Arabic script. The same engine is used on Android and iOS so the text matches. On iOS the plugin is CocoaPods (`flutter_tesseract_ocr`); a Mac build picks that up even though the rest of this project can use Swift Package Manager. Apple Vision can read Arabic from iOS 16, and this app's camera plugin still allows iOS 13, so Vision is not the reader.
+
+`ara.traineddata` and `eng.traineddata` ship in `assets/tessdata/`. The first launch after an update indexes existing pages in the background, one page at a time, with a short pause between pages. The only hint is a single line under the search field. The text stays in SQLite (`page_text` plus an FTS5 index). It is not uploaded to Drive and it is not written into the shared PDF.
+
+Search folds Arabic (tashkeel, tatweel, alef variants, ة/ه, ى/ي, ؤ/و, ئ/ي), lowercases Latin, and turns Arabic-Indic and Persian digits into ASCII. Letter matches are prefixes. A separate digits column strips separators so `4567` finds `055 123 4567`, and a query can mix words and numbers.
 
 ## Phase 3
 

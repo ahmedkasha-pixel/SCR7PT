@@ -19,12 +19,20 @@ import '../signature/signatures_screen.dart';
 import 'edit_page_screen.dart';
 
 class DocumentScreen extends StatefulWidget {
-  const DocumentScreen({super.key, required this.document, this.initialPages});
+  const DocumentScreen({
+    super.key,
+    required this.document,
+    this.initialPages,
+    this.initialPage = 0,
+  });
 
   final DocumentRecord document;
 
   /// Skips the database read on the first frame when pages are already known.
   final List<PageRecord>? initialPages;
+
+  /// Zero-based page to show first. Used when search opens a content hit.
+  final int initialPage;
 
   @override
   State<DocumentScreen> createState() => _DocumentScreenState();
@@ -37,12 +45,15 @@ class _DocumentScreenState extends State<DocumentScreen> {
   final Map<String, Uint8List> _pageBytes = {};
   int _index = 0;
   bool _loading = true;
-  final _controller = PageController();
+  late final PageController _controller;
 
   @override
   void initState() {
     super.initState();
     final seeded = widget.initialPages;
+    final start = seeded == null ? 0 : _clampedPage(seeded.length);
+    _index = start;
+    _controller = PageController(initialPage: start);
     if (seeded != null) {
       _pages = seeded;
       _rememberPages(seeded);
@@ -50,6 +61,13 @@ class _DocumentScreenState extends State<DocumentScreen> {
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
+  }
+
+  int _clampedPage(int length) {
+    if (length <= 0) return 0;
+    if (widget.initialPage < 0) return 0;
+    if (widget.initialPage >= length) return length - 1;
+    return widget.initialPage;
   }
 
   @override
@@ -82,12 +100,19 @@ class _DocumentScreenState extends State<DocumentScreen> {
       return;
     }
     _rememberPages(pages);
+    final start = _clampedPage(pages.length);
     setState(() {
       _document = document;
       _pages = pages;
-      if (_index >= pages.length) _index = pages.isEmpty ? 0 : pages.length - 1;
+      _index = start;
       _loading = false;
     });
+    if (start > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_controller.hasClients) return;
+        _controller.jumpToPage(start);
+      });
+    }
     await _refreshStamps();
   }
 

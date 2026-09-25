@@ -25,13 +25,24 @@ class AppLocalizationsAr extends AppLocalizations {
   String get recent => 'الأحدث';
 
   @override
-  String get searchHint => 'ابحث باسم المستند';
+  String get searchHint => 'ابحث في المستندات';
 
   @override
   String get searchResults => 'نتائج البحث';
 
   @override
-  String get noSearchResults => 'لا توجد مستندات بهذا الاسم';
+  String get noSearchResults => 'لا توجد مستندات مطابقة';
+
+  @override
+  String get searchInPages => 'داخل الصفحات';
+
+  @override
+  String searchPage(int page) {
+    return 'صفحة $page';
+  }
+
+  @override
+  String get searchIndexing => 'يجري تحديث البحث داخل الصفحات';
 
   @override
   String get emptyHomeTitle => 'لا توجد مستندات بعد';

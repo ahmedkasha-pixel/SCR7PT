@@ -11,7 +11,7 @@ class AppDatabase {
     if (existing != null) return existing;
     final opened = await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -83,6 +83,7 @@ class AppDatabase {
           'CREATE INDEX idx_placements_page ON signature_placements(page_id)',
         );
         await _createDriveLinks(db);
+        await _createPageText(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -107,6 +108,9 @@ class AppDatabase {
         if (oldVersion < 3) {
           await _createDriveLinks(db);
         }
+        if (oldVersion < 4) {
+          await _createPageText(db);
+        }
       },
     );
     _database = opened;
@@ -117,6 +121,29 @@ class AppDatabase {
     await _database?.close();
     _database = null;
   }
+}
+
+Future<void> _createPageText(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS page_text (
+      page_id TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      raw_text TEXT NOT NULL,
+      normalized TEXT NOT NULL,
+      digits TEXT NOT NULL,
+      fts_rowid INTEGER,
+      FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE
+    )
+  ''');
+  await db.execute('''
+    CREATE VIRTUAL TABLE IF NOT EXISTS page_fts USING fts5(
+      normalized,
+      page_id UNINDEXED,
+      document_id UNINDEXED,
+      tokenize = 'unicode61 remove_diacritics 0'
+    )
+  ''');
 }
 
 Future<void> _createDriveLinks(Database db) {
