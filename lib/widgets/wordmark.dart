@@ -19,6 +19,7 @@ class Wordmark extends StatelessWidget {
         AppConfig.appName,
         style: TextStyle(
           fontFamily: AppTheme.latinFamily,
+          fontFamilyFallback: AppTheme.arabicFallback,
           fontWeight: FontWeight.w800,
           fontSize: size,
           letterSpacing: size * 0.04,

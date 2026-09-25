@@ -32,8 +32,37 @@ class AppTheme {
   static const arabicFamily = 'IBMPlexSansArabic';
   static const latinFamily = 'Inter';
 
+  /// Arabic glyphs are not in Inter. Every UI style falls back here.
+  static const arabicFallback = <String>[arabicFamily];
+
   static ThemeData light() => _build(Brightness.light);
   static ThemeData dark() => _build(Brightness.dark);
+
+  /// Latin from Inter, Arabic from IBM Plex. IBM Plex stops at weight 700.
+  static TextStyle text({
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    double? height,
+    double? letterSpacing,
+  }) {
+    return TextStyle(
+      fontFamily: latinFamily,
+      fontFamilyFallback: arabicFallback,
+      color: color,
+      fontSize: fontSize,
+      fontWeight: arabicWeight(fontWeight),
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  static FontWeight? arabicWeight(FontWeight? weight) {
+    if (weight == null || weight.value <= FontWeight.w700.value) {
+      return weight;
+    }
+    return FontWeight.w700;
+  }
 
   static ThemeData _build(Brightness brightness) {
     final isLight = brightness == Brightness.light;
@@ -62,11 +91,16 @@ class AppTheme {
     final elevated = isLight ? AppColors.lightSurface : AppColors.elevated;
     final radius = const BorderRadius.all(Radius.circular(8));
     final hairline = BorderSide(color: scheme.outline);
+    final buttonLabel = AppTheme.text(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      height: 1.2,
+    );
     final pill = FilledButton.styleFrom(
       minimumSize: const Size(44, 44),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       shape: const StadiumBorder(),
-      textStyle: const TextStyle(fontWeight: FontWeight.w600),
+      textStyle: buttonLabel,
     );
 
     return ThemeData(
@@ -75,17 +109,9 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: background,
       canvasColor: isLight ? AppColors.lightBackground : AppColors.canvas,
-      fontFamily: arabicFamily,
-      fontFamilyFallback: const [latinFamily],
+      fontFamily: latinFamily,
+      fontFamilyFallback: arabicFallback,
       splashFactory: InkSparkle.splashFactory,
-      appBarTheme: AppBarTheme(
-        centerTitle: false,
-        backgroundColor: background,
-        foregroundColor: scheme.onSurface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
       iconTheme: IconThemeData(color: scheme.onSurface),
       dividerTheme: DividerThemeData(
         color: scheme.outline,
@@ -99,7 +125,7 @@ class AppTheme {
           horizontal: 16,
           vertical: 14,
         ),
-        hintStyle: TextStyle(color: scheme.onSurfaceVariant),
+        hintStyle: AppTheme.text(color: scheme.onSurfaceVariant),
         border: OutlineInputBorder(borderRadius: radius, borderSide: hairline),
         enabledBorder: OutlineInputBorder(
           borderRadius: radius,
@@ -133,7 +159,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: isLight ? AppColors.background : AppColors.elevated,
-        contentTextStyle: TextStyle(
+        contentTextStyle: AppTheme.text(
           color: isLight ? AppColors.text : AppColors.text,
         ),
         shape: RoundedRectangleBorder(borderRadius: radius),
@@ -146,10 +172,14 @@ class AppTheme {
           shape: const StadiumBorder(),
           side: hairline,
           foregroundColor: scheme.onSurface,
+          textStyle: buttonLabel,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(44, 44),
+          textStyle: buttonLabel,
+        ),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
@@ -160,8 +190,16 @@ class AppTheme {
             : AppColors.surfaceAlt,
         selectedColor: AppColors.primary,
         disabledColor: scheme.surface,
-        labelStyle: TextStyle(color: scheme.onSurface),
-        secondaryLabelStyle: const TextStyle(color: Colors.white),
+        labelStyle: AppTheme.text(
+          color: scheme.onSurface,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        secondaryLabelStyle: AppTheme.text(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
         side: hairline,
         shape: const StadiumBorder(),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -177,6 +215,28 @@ class AppTheme {
         backgroundColor: isLight ? AppColors.lightSurface : AppColors.canvas,
         indicatorColor: AppColors.primary.withValues(alpha: 0.16),
         height: 64,
+        labelTextStyle: WidgetStatePropertyAll(
+          AppTheme.text(fontSize: 12, fontWeight: FontWeight.w500),
+        ),
+      ),
+      appBarTheme: AppBarTheme(
+        centerTitle: false,
+        backgroundColor: background,
+        foregroundColor: scheme.onSurface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppTheme.text(
+          color: scheme.onSurface,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          height: 1.25,
+        ),
+        toolbarTextStyle: AppTheme.text(
+          color: scheme.onSurface,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       textTheme: _text(scheme),
     );
@@ -184,7 +244,7 @@ class AppTheme {
 
   static TextTheme _text(ColorScheme scheme) {
     TextStyle style(double size, FontWeight weight, {double height = 1.35}) {
-      return TextStyle(
+      return AppTheme.text(
         fontSize: size,
         fontWeight: weight,
         height: height,

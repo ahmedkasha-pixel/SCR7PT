@@ -133,7 +133,28 @@ void _pop(WidgetTester tester) {
   tester.state<NavigatorState>(find.byType(Navigator).first).pop();
 }
 
+void _expectArabicFonts(WidgetTester tester) {
+  final arabic = RegExp(r'[\u0600-\u06FF]');
+  for (final element in find.byType(RichText).evaluate()) {
+    final render = element.renderObject;
+    if (render is! RenderParagraph) continue;
+    final text = render.text.toPlainText();
+    if (!arabic.hasMatch(text)) continue;
+    final style = render.text.style;
+    expect(
+      style?.fontFamilyFallback,
+      contains(AppTheme.arabicFamily),
+      reason: text,
+    );
+    final weight = style?.fontWeight;
+    if (weight != null) {
+      expect(weight.value, lessThanOrEqualTo(700), reason: text);
+    }
+  }
+}
+
 Future<void> _save(WidgetTester tester, String name) async {
+  _expectArabicFonts(tester);
   await tester.pump();
   await tester.runAsync(
     () => Future<void>.delayed(const Duration(milliseconds: 80)),

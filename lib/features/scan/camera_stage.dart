@@ -60,7 +60,7 @@ class CameraStage extends StatelessWidget {
                         onPressed: onClose,
                         child: Text(
                           l10n.cancel,
-                          style: const TextStyle(
+                          style: AppTheme.text(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
@@ -123,7 +123,7 @@ class _CountPill extends StatelessWidget {
       ),
       child: Text(
         l10n.pagesCount(count),
-        style: const TextStyle(
+        style: AppTheme.text(
           color: Colors.white,
           fontWeight: FontWeight.w600,
           fontSize: 12,
@@ -198,7 +198,7 @@ class _ModeChip extends StatelessWidget {
               child: Text(
                 label,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: AppTheme.text(
                   color: selected ? Colors.white : AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
@@ -302,7 +302,7 @@ class _Message extends StatelessWidget {
                     ? l10n.cameraPermissionBody
                     : l10n.cameraUnavailableTitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white),
+                style: AppTheme.text(color: Colors.white),
               ),
               if (denied) ...[
                 const SizedBox(height: 16),
@@ -392,7 +392,7 @@ class _RoundAction extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          style: AppTheme.text(color: Colors.white70, fontSize: 12),
         ),
       ],
     );
