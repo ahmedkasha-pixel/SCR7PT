@@ -1,0 +1,29 @@
+group = 'io.paratoner.flutter_tesseract_ocr'
+version = '1.0'
+
+// Patched for Gradle 9 / AGP 9. The published 0.4.31 script calls jcenter(),
+// which this toolchain no longer provides.
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        flatDir {
+            dirs project(':flutter_tesseract_ocr').file('libs')
+        }
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace = 'io.paratoner.flutter_tesseract_ocr'
+    compileSdk = 36
+
+    defaultConfig {
+        minSdk = 21
+    }
+}
+
+dependencies {
+    api(name: 'tesseract4android-release', ext: 'aar')
+}

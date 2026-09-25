@@ -26,7 +26,8 @@ dependencies:
   googleapis: ^17.0.0
   extension_google_sign_in_as_googleapis_auth: ^3.0.0
   connectivity_plus: ^7.3.1
-  flutter_tesseract_ocr: 0.4.31
+  flutter_tesseract_ocr:
+    path: third_party/flutter_tesseract_ocr
 
 dev_dependencies:
   flutter_test:
