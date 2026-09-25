@@ -414,6 +414,19 @@ class DocumentRepository {
     return rows.map(_pageFromRow).toList();
   }
 
+  /// Clears indexed text so a pipeline upgrade re-processes all pages.
+  Future<void> clearAllPageText() async {
+    final db = await _database.database;
+    try {
+      await db.delete('page_text');
+    } catch (e) {
+      debugPrint('clear page_text error: $e');
+    }
+    try {
+      await db.rawDelete('DELETE FROM page_fts');
+    } catch (_) {}
+  }
+
   Future<List<String>> pageIdsMatchingFts(String match) async {
     final db = await _database.database;
     try {

@@ -45,6 +45,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchIndexing => 'Updating search inside pages';
 
   @override
+  String searchIndexingProgress(int current, int total) {
+    return 'Preparing in-document search $current/$total';
+  }
+
+  @override
+  String get reindexSearch => 'Re-index in-document search';
+
+  @override
+  String get reindexSearchSubtitle =>
+      'Re-process all documents with improved search accuracy';
+
+  @override
+  String get reindexingStarted => 'In-document indexing started';
+
+  @override
   String get emptyHomeTitle => 'No documents yet';
 
   @override

@@ -13,7 +13,7 @@ import 'package:image/image.dart' as img;
 import 'support/fakes.dart';
 
 void main() {
-  testWidgets('Arabic search screenshots for a word and a phone fragment', (
+  testWidgets('Arabic, English, fuzzy search & indexing indicator screenshots', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(780, 1688);
@@ -43,37 +43,58 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    await tester.enterText(find.byKey(const Key('search-field')), 'راميه');
+    // 1. Search Arabic (with typo tolerance: searching 'المستاجر' matching 'المستاج')
+    await tester.enterText(find.byKey(const Key('search-field')), 'المستاجر');
     await tester.pump();
-    expect(find.text('تقرير المختبر'), findsOneWidget);
+    expect(find.text('عقد إيجار'), findsOneWidget);
     expect(find.text('داخل الصفحات'), findsOneWidget);
-    expect(find.textContaining('رامية'), findsWidgets);
-    expect(find.text('صفحة 2'), findsOneWidget);
-    expect(find.textContaining('راميه'), findsWidgets);
-    await _capture(tester, 'search-ramiya-ar');
+    await _capture(tester, 'search-arabic-query');
 
-    await tester.enterText(find.byKey(const Key('search-field')), '4567');
+    // 2. Search English (searching 'invoice' matching English invoice in pages)
+    await tester.enterText(find.byKey(const Key('search-field')), 'invoice');
     await tester.pump();
-    expect(find.text('ملاحظات العيادة'), findsOneWidget);
-    expect(find.text('تقرير المختبر'), findsNothing);
-    expect(find.textContaining('4567'), findsWidgets);
-    expect(find.text('صفحة 1'), findsOneWidget);
-    await _capture(tester, 'search-digits-ar');
+    expect(find.text('فاتورة استشارية'), findsOneWidget);
+    expect(find.text('داخل الصفحات'), findsOneWidget);
+    await _capture(tester, 'search-english-query');
 
+    // 3. Clear search and show indexing progress indicator: 12/40
+    await tester.enterText(find.byKey(const Key('search-field')), '');
+    harness.library.setIndexing(12, 40);
+    await tester.pump();
+    expect(find.byKey(const Key('search-indexing')), findsOneWidget);
+    expect(find.text('جاري تجهيز البحث داخل المستندات 12/40'), findsOneWidget);
+    await _capture(tester, 'search-indexing-progress');
+
+    // Reset indexing for clean state
+    harness.library.setIndexing(0, 0);
+    await tester.pump();
+
+    // Composite Arabic and English queries into a single comparison board
     final copied = (await tester.runAsync(() async {
-      final first = await File(
-        'build/screenshots/ocr-search/search-ramiya-ar.png',
-      ).readAsBytes();
-      final second = await File(
-        'build/screenshots/ocr-search/search-digits-ar.png',
-      ).readAsBytes();
-      final destination = Directory(
-        '/opt/cursor/artifacts/scr7pt/ocr-search/screens',
-      );
+      final arBytes = await File('build/screenshots/ocr-search/search-arabic-query.png').readAsBytes();
+      final enBytes = await File('build/screenshots/ocr-search/search-english-query.png').readAsBytes();
+      final idxBytes = await File('build/screenshots/ocr-search/search-indexing-progress.png').readAsBytes();
+
+      final arImg = img.decodePng(arBytes)!;
+      final enImg = img.decodePng(enBytes)!;
+      
+      // Side by side composite: width = arImg.width + enImg.width + 40
+      final gap = 40;
+      final compW = arImg.width + enImg.width + gap;
+      final compH = arImg.height;
+      final comp = img.Image(width: compW, height: compH);
+      img.fill(comp, color: img.ColorRgb8(15, 23, 42)); // App background navy
+      img.compositeImage(comp, arImg, dstX: 0, dstY: 0);
+      img.compositeImage(comp, enImg, dstX: arImg.width + gap, dstY: 0);
+
+      final compBytes = Uint8List.fromList(img.encodePng(comp));
+
+      final destination = Directory('/opt/cursor/artifacts/scr7pt/ocr-search/screens');
       await destination.create(recursive: true);
-      await File('${destination.path}/search-ramiya-ar.png').writeAsBytes(first);
-      await File('${destination.path}/search-digits-ar.png').writeAsBytes(second);
-      return first.length != second.length;
+      await File('${destination.path}/search-queries-comparison.png').writeAsBytes(compBytes);
+      await File('${destination.path}/search-indexing-progress.png').writeAsBytes(idxBytes);
+
+      return compBytes.isNotEmpty && idxBytes.isNotEmpty;
     }))!;
     expect(copied, isTrue);
   });
@@ -101,24 +122,33 @@ Future<void> _seed(TestHarness harness) async {
     );
   }
 
-  final lab = await harness.documents.createDocument(
-    name: 'تقرير المختبر',
-    pages: [page('lab-1'), page('lab-2')],
+  // Document 1: Contract with OCR typo in Arabic (المستاج instead of المستاجر)
+  final contract = await harness.documents.createDocument(
+    name: 'عقد إيجار',
+    pages: [page('contract-1')],
   );
-  final labPages = await harness.documents.pagesFor(lab.id);
+  final contractPages = await harness.documents.pagesFor(contract.id);
   await harness.documents.savePageText(
-    pageId: labPages[0].id,
-    documentId: lab.id,
+    pageId: contractPages[0].id,
+    documentId: contract.id,
     position: 0,
-    rawText: 'غلاف التقرير الطبي',
-  );
-  await harness.documents.savePageText(
-    pageId: labPages[1].id,
-    documentId: lab.id,
-    position: 1,
-    rawText: 'اسم المريضة رامية بنت أحمد',
+    rawText: 'بيانات المستاج والطرف الاول المؤجر سليمان في حي الملقا بالرياض',
   );
 
+  // Document 2: English invoice with consulting deliverables
+  final invoice = await harness.documents.createDocument(
+    name: 'فاتورة استشارية',
+    pages: [page('inv-1')],
+  );
+  final invPages = await harness.documents.pagesFor(invoice.id);
+  await harness.documents.savePageText(
+    pageId: invPages[0].id,
+    documentId: invoice.id,
+    position: 0,
+    rawText: 'TAX INVOICE Apex Consulting Services Total invioce amount 13800',
+  );
+
+  // Document 3: Clinic report
   final clinic = await harness.documents.createDocument(
     name: 'ملاحظات العيادة',
     pages: [page('clinic-1')],
@@ -128,7 +158,7 @@ Future<void> _seed(TestHarness harness) async {
     pageId: clinicPages.single.id,
     documentId: clinic.id,
     position: 0,
-    rawText: 'هاتف العيادة (055) 123-4567',
+    rawText: 'هاتف العيادة (055) 123-4567 داخلي 4567',
   );
 }
 

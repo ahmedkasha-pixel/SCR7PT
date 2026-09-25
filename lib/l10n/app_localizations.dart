@@ -164,6 +164,30 @@ abstract class AppLocalizations {
   /// **'Updating search inside pages'**
   String get searchIndexing;
 
+  /// No description provided for @searchIndexingProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing in-document search {current}/{total}'**
+  String searchIndexingProgress(int current, int total);
+
+  /// No description provided for @reindexSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-index in-document search'**
+  String get reindexSearch;
+
+  /// No description provided for @reindexSearchSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-process all documents with improved search accuracy'**
+  String get reindexSearchSubtitle;
+
+  /// No description provided for @reindexingStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'In-document indexing started'**
+  String get reindexingStarted;
+
   /// No description provided for @emptyHomeTitle.
   ///
   /// In en, this message translates to:

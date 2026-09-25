@@ -19,10 +19,11 @@ class SettingsScreen extends StatelessWidget {
     final scope = AppScope.of(context);
     final settings = scope.settings;
     final drive = scope.drive;
+    final library = scope.library;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settings)),
       body: ListenableBuilder(
-        listenable: Listenable.merge([settings, drive]),
+        listenable: Listenable.merge([settings, drive, library]),
         builder: (context, _) {
           final current = settings.settings;
           return ListView(
@@ -131,6 +132,39 @@ class SettingsScreen extends StatelessWidget {
                   subtitle: Text(l10n.signatureBody),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.pushNamed(context, '/signatures'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: ListTile(
+                  key: const Key('reindex-search'),
+                  leading: const Icon(Icons.manage_search_outlined),
+                  title: Text(l10n.reindexSearch),
+                  subtitle: Text(
+                    library.indexingTotal > 0
+                        ? l10n.searchIndexingProgress(
+                            library.indexingCurrent,
+                            library.indexingTotal,
+                          )
+                        : l10n.reindexSearchSubtitle,
+                  ),
+                  trailing: library.indexingTotal > 0
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : null,
+                  onTap: library.indexingTotal > 0
+                      ? null
+                      : () async {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l10n.reindexingStarted)),
+                          );
+                          await scope.documents.clearAllPageText();
+                          final pages = await scope.documents.pagesWithoutText();
+                          scope.documents.onPagesReady?.call(pages);
+                        },
                 ),
               ),
               const SizedBox(height: 28),

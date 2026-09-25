@@ -110,6 +110,31 @@ void main() {
     final phone = snippetFor('هاتف (055) 123-4567 داخلي', analyzeQuery('4567'))!;
     expect(phone.text.substring(phone.start, phone.end), '4567');
   });
+
+  test('fuzzy and substring matching tolerates OCR errors and ranks exact first', () {
+    // 1. Substring inside concatenated words
+    final merged = _page('عقد ايجارموحد للطرفين', documentId: 'merged');
+    expect(_ids('ايجار', [merged]), ['merged']);
+
+    // 2. OCR typo in Arabic: 'المستاج' matching 'المستاجر'
+    final typoAr = _page('بيانات المستاج والطرف الاول', documentId: 'typo-ar');
+    expect(_ids('المستاجر', [typoAr]), ['typo-ar']);
+
+    // 3. OCR typo in English: 'invioce' matching 'invoice'
+    final typoEn = _page('Total invioce amount 500', documentId: 'typo-en');
+    expect(_ids('invoice', [typoEn]), ['typo-en']);
+
+    // 4. Exact matches rank before fuzzy matches
+    final exactDoc = _doc('exact', 'وثيقة عادية');
+    final fuzzyDoc = _doc('fuzzy', 'وثيقة أخرى');
+    final hits = rankSearch('invoice', [fuzzyDoc, exactDoc], [
+      _page('invioce payment received', documentId: 'fuzzy', id: 'f0'),
+      _page('invoice payment confirmed', documentId: 'exact', id: 'e0'),
+    ]);
+    expect(hits.map((h) => h.document.id), ['exact', 'fuzzy']);
+    expect(hits.first.exactMatch, isTrue);
+    expect(hits.last.exactMatch, isFalse);
+  });
 }
 
 DocumentRecord _doc(String id, String name) {

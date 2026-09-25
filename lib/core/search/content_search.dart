@@ -1,10 +1,12 @@
+import 'dart:math' as math;
+
 import '../../data/models/records.dart';
 import 'arabic_normalize.dart';
 
 class QueryTerm {
   const QueryTerm({required this.text, required this.digitGroups});
 
-  /// Normalized letters for prefix matching. Empty for a number-only token.
+  /// Normalized letters for prefix/substring/fuzzy matching. Empty for a number-only token.
   final String text;
 
   /// ASCII digit groups of length >= 3, or a joined decimal such as 125.
@@ -33,6 +35,8 @@ class IndexedPage {
   final String digits;
 }
 
+enum MatchQuality { none, fuzzy, exact }
+
 class SearchHit {
   const SearchHit({
     required this.document,
@@ -41,6 +45,7 @@ class SearchHit {
     this.highlightStart = 0,
     this.highlightEnd = 0,
     this.pageIndex,
+    this.exactMatch = true,
   });
 
   final DocumentRecord document;
@@ -51,6 +56,9 @@ class SearchHit {
 
   /// Zero-based page index when this is a content hit.
   final int? pageIndex;
+
+  /// True when all terms matched exactly (or name match); false for fuzzy OCR match.
+  final bool exactMatch;
 
   int? get pageNumber => pageIndex == null ? null : pageIndex! + 1;
 }
@@ -83,7 +91,7 @@ List<QueryTerm> analyzeQuery(String query) {
   return terms;
 }
 
-/// Name matches first, then content matches. A document is listed once.
+/// Name matches first, then exact content matches, then fuzzy content matches.
 List<SearchHit> rankSearch(
   String query,
   List<DocumentRecord> documents,
@@ -95,72 +103,192 @@ List<SearchHit> rankSearch(
   final used = <String>{};
   for (final document in documents) {
     if (!_nameMatches(document.name, terms)) continue;
-    nameHits.add(SearchHit(document: document, nameMatch: true));
+    nameHits.add(SearchHit(document: document, nameMatch: true, exactMatch: true));
     used.add(document.id);
   }
   final byDocument = <String, List<IndexedPage>>{};
   for (final page in pages) {
     byDocument.putIfAbsent(page.documentId, () => []).add(page);
   }
-  final contentHits = <SearchHit>[];
+
+  final exactContentHits = <SearchHit>[];
+  final fuzzyContentHits = <SearchHit>[];
+
   for (final document in documents) {
     if (used.contains(document.id)) continue;
     final candidates = byDocument[document.id];
     if (candidates == null) continue;
-    IndexedPage? match;
+
+    IndexedPage? bestMatch;
+    MatchQuality bestQuality = MatchQuality.none;
+
     for (final page in candidates) {
-      if (!_pageMatches(page, terms)) continue;
-      if (match == null || page.position < match.position) match = page;
+      final quality = _pageMatchQuality(page, terms);
+      if (quality == MatchQuality.none) continue;
+
+      if (bestMatch == null) {
+        bestMatch = page;
+        bestQuality = quality;
+      } else if (quality == MatchQuality.exact && bestQuality != MatchQuality.exact) {
+        bestMatch = page;
+        bestQuality = quality;
+      } else if (quality == bestQuality && page.position < bestMatch.position) {
+        bestMatch = page;
+      }
     }
-    if (match == null) continue;
-    final snippet = snippetFor(match.raw, terms);
-    contentHits.add(
-      SearchHit(
-        document: document,
-        nameMatch: false,
-        snippet: snippet?.text ?? '',
-        highlightStart: snippet?.start ?? 0,
-        highlightEnd: snippet?.end ?? 0,
-        pageIndex: match.position,
-      ),
+
+    if (bestMatch == null) continue;
+    final snippet = snippetFor(bestMatch.raw, terms);
+    final hit = SearchHit(
+      document: document,
+      nameMatch: false,
+      snippet: snippet?.text ?? '',
+      highlightStart: snippet?.start ?? 0,
+      highlightEnd: snippet?.end ?? 0,
+      pageIndex: bestMatch.position,
+      exactMatch: bestQuality == MatchQuality.exact,
     );
+
+    if (bestQuality == MatchQuality.exact) {
+      exactContentHits.add(hit);
+    } else {
+      fuzzyContentHits.add(hit);
+    }
   }
-  return [...nameHits, ...contentHits];
+
+  return [...nameHits, ...exactContentHits, ...fuzzyContentHits];
 }
 
 bool _nameMatches(String name, List<QueryTerm> terms) {
   final normalized = normalizeForSearch(name);
   final digits = extractDigitRuns(name).map((run) => run.digits).join(' ');
   for (final term in terms) {
-    if (term.text.isNotEmpty && !normalized.contains(term.text)) return false;
+    if (term.text.isNotEmpty && _termMatchQuality(normalized, term.text) == MatchQuality.none) {
+      return false;
+    }
     if (!_digitsMatch(digits, term.digitGroups)) return false;
   }
   return true;
 }
 
-bool _pageMatches(IndexedPage page, List<QueryTerm> terms) {
+MatchQuality _pageMatchQuality(IndexedPage page, List<QueryTerm> terms) {
+  var allExact = true;
   for (final term in terms) {
-    if (term.text.isNotEmpty && !textHasPrefix(page.normalized, term.text)) {
-      return false;
+    if (!_digitsMatch(page.digits, term.digitGroups)) return MatchQuality.none;
+    if (term.text.isNotEmpty) {
+      final quality = _termMatchQuality(page.normalized, term.text);
+      if (quality == MatchQuality.none) return MatchQuality.none;
+      if (quality != MatchQuality.exact) allExact = false;
     }
-    if (!_digitsMatch(page.digits, term.digitGroups)) return false;
   }
-  return true;
+  return allExact ? MatchQuality.exact : MatchQuality.fuzzy;
 }
 
-bool textHasPrefix(String normalized, String term) {
-  if (term.isEmpty) return true;
+MatchQuality _termMatchQuality(String normalizedText, String term) {
+  if (term.isEmpty) return MatchQuality.exact;
+
+  // 1. Exact normalized substring match
+  if (normalizedText.contains(term)) return MatchQuality.exact;
+
+  // 2. Exact word prefix match
+  final words = _extractWords(normalizedText);
+  for (final word in words) {
+    if (word.startsWith(term)) return MatchQuality.exact;
+  }
+
+  // 3. Fuzzy matching for OCR errors (for terms length >= 4)
+  if (term.length >= 4) {
+    final maxDist = term.length <= 5 ? 1 : 2;
+    for (final word in words) {
+      if ((word.length - term.length).abs() <= maxDist) {
+        if (editDistance(word, term, maxDistance: maxDist) <= maxDist) {
+          return MatchQuality.fuzzy;
+        }
+      }
+      if (word.length > term.length) {
+        final prefix = word.substring(0, term.length);
+        if (editDistance(prefix, term, maxDistance: maxDist) <= maxDist) {
+          return MatchQuality.fuzzy;
+        }
+      }
+      if (word.length >= 3 && trigramSimilarity(word, term) >= 0.65) {
+        return MatchQuality.fuzzy;
+      }
+    }
+  }
+
+  return MatchQuality.none;
+}
+
+List<String> _extractWords(String normalized) {
+  final words = <String>[];
   var current = StringBuffer();
-  bool matches(String word) => word.startsWith(term);
   for (final rune in normalized.runes) {
     if (isSearchLetter(rune) || (rune >= 0x30 && rune <= 0x39)) {
       current.writeCharCode(rune);
     } else if (current.isNotEmpty) {
-      if (matches(current.toString())) return true;
+      words.add(current.toString());
       current.clear();
     }
   }
-  return current.isNotEmpty && matches(current.toString());
+  if (current.isNotEmpty) words.add(current.toString());
+  return words;
+}
+
+bool textHasPrefix(String normalized, String term) {
+  return _termMatchQuality(normalized, term) != MatchQuality.none;
+}
+
+/// Bounded Levenshtein distance for fuzzy matching OCR errors.
+int editDistance(String s1, String s2, {int maxDistance = 2}) {
+  if (s1 == s2) return 0;
+  final len1 = s1.length;
+  final len2 = s2.length;
+  if ((len1 - len2).abs() > maxDistance) return maxDistance + 1;
+  if (len1 == 0) return len2;
+  if (len2 == 0) return len1;
+
+  var previousRow = List<int>.generate(len2 + 1, (i) => i);
+  var currentRow = List<int>.filled(len2 + 1, 0);
+
+  for (var i = 0; i < len1; i++) {
+    currentRow[0] = i + 1;
+    var minInRow = currentRow[0];
+    for (var j = 0; j < len2; j++) {
+      final insertCost = previousRow[j + 1] + 1;
+      final deleteCost = currentRow[j] + 1;
+      final substituteCost = previousRow[j] + (s1.codeUnitAt(i) == s2.codeUnitAt(j) ? 0 : 1);
+      final cost = math.min(insertCost, math.min(deleteCost, substituteCost));
+      currentRow[j + 1] = cost;
+      if (cost < minInRow) minInRow = cost;
+    }
+    if (minInRow > maxDistance) return maxDistance + 1;
+    final temp = previousRow;
+    previousRow = currentRow;
+    currentRow = temp;
+  }
+  return previousRow[len2];
+}
+
+/// Character trigram similarity between 0.0 and 1.0.
+double trigramSimilarity(String s1, String s2) {
+  if (s1 == s2) return 1.0;
+  if (s1.length < 3 || s2.length < 3) return 0.0;
+  final t1 = <String>{};
+  for (var i = 0; i <= s1.length - 3; i++) {
+    t1.add(s1.substring(i, i + 3));
+  }
+  final t2 = <String>{};
+  for (var i = 0; i <= s2.length - 3; i++) {
+    t2.add(s2.substring(i, i + 3));
+  }
+  var intersection = 0;
+  for (final tri in t1) {
+    if (t2.contains(tri)) intersection++;
+  }
+  final total = t1.length + t2.length;
+  if (total == 0) return 0.0;
+  return (2.0 * intersection) / total;
 }
 
 bool _digitsMatch(String digitsField, List<String> groups) {
@@ -220,6 +348,10 @@ Snippet? snippetFor(String raw, List<QueryTerm> terms) {
   var wordNormStart = 0;
   var wordRawStart = 0;
   var inWord = false;
+
+  (int, int)? bestFuzzySpan;
+  var bestFuzzyDist = 999;
+
   for (var i = 0; i < raw.length; i++) {
     final folded = normalizeForSearch(raw[i]);
     if (folded.isEmpty) continue;
@@ -235,7 +367,17 @@ Snippet? snippetFor(String raw, List<QueryTerm> terms) {
     } else {
       if (inWord) {
         final word = normalized.substring(wordNormStart, normIndex);
-        if (word.startsWith(term)) return (wordRawStart, i);
+        if (word.startsWith(term) || word.contains(term)) {
+          return (wordRawStart, i);
+        }
+        if (term.length >= 4) {
+          final maxDist = term.length <= 5 ? 1 : 2;
+          final d = editDistance(word, term, maxDistance: maxDist);
+          if (d <= maxDist && d < bestFuzzyDist) {
+            bestFuzzyDist = d;
+            bestFuzzySpan = (wordRawStart, i);
+          }
+        }
         inWord = false;
       }
       normIndex += folded.length;
@@ -243,9 +385,18 @@ Snippet? snippetFor(String raw, List<QueryTerm> terms) {
   }
   if (inWord) {
     final word = normalized.substring(wordNormStart, normIndex);
-    if (word.startsWith(term)) return (wordRawStart, raw.length);
+    if (word.startsWith(term) || word.contains(term)) {
+      return (wordRawStart, raw.length);
+    }
+    if (term.length >= 4) {
+      final maxDist = term.length <= 5 ? 1 : 2;
+      final d = editDistance(word, term, maxDistance: maxDist);
+      if (d <= maxDist && d < bestFuzzyDist) {
+        bestFuzzySpan = (wordRawStart, raw.length);
+      }
+    }
   }
-  return null;
+  return bestFuzzySpan;
 }
 
 (int, int)? _digitSpan(String raw, String group) {

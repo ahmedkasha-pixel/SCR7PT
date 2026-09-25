@@ -45,6 +45,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get searchIndexing => 'يجري تحديث البحث داخل الصفحات';
 
   @override
+  String searchIndexingProgress(int current, int total) {
+    return 'جاري تجهيز البحث داخل المستندات $current/$total';
+  }
+
+  @override
+  String get reindexSearch => 'إعادة فهرسة البحث في المستندات';
+
+  @override
+  String get reindexSearchSubtitle =>
+      'إعادة معالجة كافة الصفحات بالدقة المحسنة للبحث';
+
+  @override
+  String get reindexingStarted => 'بدأت إعادة الفهرسة';
+
+  @override
   String get emptyHomeTitle => 'لا توجد مستندات بعد';
 
   @override

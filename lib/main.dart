@@ -70,8 +70,21 @@ Future<void> main() async {
     ),
   );
   // Index existing pages only after the first frame, and never let a failure
-  // there surface as a launch crash.
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(indexer.backfill());
+  // there surface as a launch crash. Re-indexes with the improved pipeline once
+  // after upgrade.
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      final repo = SettingsRepository();
+      final version = await repo.getOcrPipelineVersion();
+      if (version < SettingsRepository.currentOcrPipelineVersion) {
+        await repo.setOcrPipelineVersion(SettingsRepository.currentOcrPipelineVersion);
+        unawaited(indexer.backfill(force: true));
+      } else {
+        unawaited(indexer.backfill());
+      }
+    } catch (e) {
+      debugPrint('Startup indexing error: $e');
+      unawaited(indexer.backfill());
+    }
   });
 }

@@ -18,7 +18,9 @@ class LibraryController extends ChangeNotifier {
   List<DocumentRecord> searchResults = const [];
   List<IndexedPage> indexed = const [];
   List<SearchHit> searchHits = const [];
-  int indexingPages = 0;
+  int indexingCurrent = 0;
+  int indexingTotal = 0;
+  int get indexingPages => indexingTotal > 0 ? (indexingTotal - indexingCurrent + 1) : 0;
   int _generation = 0;
 
   /// Pages saved while a refresh was waiting on SQLite.
@@ -79,9 +81,10 @@ class LibraryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setIndexing(int count) {
-    if (indexingPages == count) return;
-    indexingPages = count;
+  void setIndexing(int current, int total) {
+    if (indexingCurrent == current && indexingTotal == total) return;
+    indexingCurrent = current;
+    indexingTotal = total;
     notifyListeners();
   }
 

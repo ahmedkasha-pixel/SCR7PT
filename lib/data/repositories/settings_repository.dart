@@ -10,6 +10,18 @@ class SettingsRepository {
   static const compressionKey = 'compression_level';
   static const driveAutoUploadKey = 'drive_auto_upload';
   static const driveWifiOnlyKey = 'drive_wifi_only';
+  static const ocrPipelineVersionKey = 'ocr_pipeline_version';
+  static const currentOcrPipelineVersion = 2;
+
+  Future<int> getOcrPipelineVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(ocrPipelineVersionKey) ?? 0;
+  }
+
+  Future<void> setOcrPipelineVersion(int version) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(ocrPipelineVersionKey, version);
+  }
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();

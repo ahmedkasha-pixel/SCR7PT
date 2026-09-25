@@ -24,15 +24,21 @@ class PageIndexer {
   final DocumentRepository _documents;
   final PageOcr _ocr;
   final void Function(IndexedPage page) _onIndexed;
-  final void Function(int remaining) _onIndexing;
+  final void Function(int current, int total) _onIndexing;
   final Duration gap;
 
   final List<PageRecord> _queue = [];
   final Set<String> _queued = {};
   final Set<String> _failed = {};
   var _running = false;
+  int _total = 0;
+  int _processed = 0;
 
   void enqueue(List<PageRecord> pages) {
+    if (_queue.isEmpty && !_running) {
+      _total = 0;
+      _processed = 0;
+    }
     for (final page in pages) {
       if (_failed.contains(page.id)) continue;
       final existing = _queue.indexWhere((item) => item.id == page.id);
@@ -44,16 +50,26 @@ class PageIndexer {
       _queued.add(page.id);
       _queue.add(page);
     }
+    _total = _processed + _queue.length;
+    if (_total > 0) {
+      _onIndexing(_processed, _total);
+    }
     unawaited(_pump());
   }
 
-  Future<void> backfill() async {
+  Future<void> backfill({bool force = false}) async {
     try {
+      if (force) {
+        await _documents.clearAllPageText();
+        _failed.clear();
+      }
       enqueue(await _documents.pagesWithoutText());
     } catch (error, stack) {
       debugPrint('OCR backfill skipped: $error\n$stack');
     }
   }
+
+  Future<void> reindexAll() => backfill(force: true);
 
   Future<void> _pump() async {
     if (_running) return;
@@ -62,7 +78,8 @@ class PageIndexer {
       while (_queue.isNotEmpty) {
         final page = _queue.removeAt(0);
         _queued.remove(page.id);
-        _onIndexing(_queue.length + 1);
+        _processed++;
+        _onIndexing(_processed, _total);
         try {
           final file = File(page.processedPath);
           if (!file.existsSync()) {
@@ -87,7 +104,11 @@ class PageIndexer {
       }
     } finally {
       _running = false;
-      _onIndexing(0);
+      if (_queue.isEmpty) {
+        _total = 0;
+        _processed = 0;
+        _onIndexing(0, 0);
+      }
       if (_queue.isNotEmpty) unawaited(_pump());
     }
   }

@@ -16,6 +16,16 @@
     }
   },
   "searchIndexing": "Updating search inside pages",
+  "searchIndexingProgress": "Preparing in-document search {current}/{total}",
+  "@searchIndexingProgress": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "reindexSearch": "Re-index in-document search",
+  "reindexSearchSubtitle": "Re-process all documents with improved search accuracy",
+  "reindexingStarted": "In-document indexing started",
   "emptyHomeTitle": "No documents yet",
   "emptyHomeBody": "Scan a page or import a photo. Files stay on this device.",
   "emptyFolderTitle": "This folder is empty",

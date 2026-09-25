@@ -138,16 +138,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                if (library.indexingPages > 0)
+                if (library.indexingTotal > 0)
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                      child: Text(
-                        l10n.searchIndexing,
-                        key: const Key('search-indexing'),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 1.5),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.searchIndexingProgress(
+                                library.indexingCurrent,
+                                library.indexingTotal,
+                              ),
+                              key: const Key('search-indexing'),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

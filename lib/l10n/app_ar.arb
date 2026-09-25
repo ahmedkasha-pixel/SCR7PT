@@ -16,6 +16,16 @@
     }
   },
   "searchIndexing": "يجري تحديث البحث داخل الصفحات",
+  "searchIndexingProgress": "جاري تجهيز البحث داخل المستندات {current}/{total}",
+  "@searchIndexingProgress": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "reindexSearch": "إعادة فهرسة البحث في المستندات",
+  "reindexSearchSubtitle": "إعادة معالجة كافة الصفحات بالدقة المحسنة للبحث",
+  "reindexingStarted": "بدأت إعادة الفهرسة",
   "emptyHomeTitle": "لا توجد مستندات بعد",
   "emptyHomeBody": "امسح ورقة أو استورد صورة. الملفات تبقى على هذا الجهاز.",
   "emptyFolderTitle": "هذا المجلد فارغ",
