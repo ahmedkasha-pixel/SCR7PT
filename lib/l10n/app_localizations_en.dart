@@ -281,14 +281,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compressionBody =>
-      'High, medium, and low quality, with the file size after compression.';
+      'High, medium, and low quality, with the file size shown before you share.';
 
   @override
   String get signatureTitle => 'Signatures';
 
   @override
   String get signatureBody =>
-      'Import a signature from the camera or gallery, remove the paper background, and place it on a page. Drawing with a finger is a later option.';
+      'Photograph a signature, remove the paper, and place it on a page. You can also draw one.';
 
   @override
   String get cloudTitle => 'Google Drive';
@@ -345,4 +345,104 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get moreActions => 'More';
+
+  @override
+  String get pageSize => 'Page size';
+
+  @override
+  String get pageSizeAuto => 'Auto';
+
+  @override
+  String get pageSizeA4 => 'A4';
+
+  @override
+  String get pageSizeLetter => 'Letter';
+
+  @override
+  String get pageSizeOriginal => 'Original';
+
+  @override
+  String get quality => 'Quality';
+
+  @override
+  String get qualityHigh => 'High';
+
+  @override
+  String get qualityMedium => 'Medium';
+
+  @override
+  String get qualityLow => 'Low';
+
+  @override
+  String get originalSize => 'Original';
+
+  @override
+  String get signatures => 'Signatures';
+
+  @override
+  String get addSignature => 'Add signature';
+
+  @override
+  String get fromCamera => 'Camera';
+
+  @override
+  String get fromGallery => 'Gallery';
+
+  @override
+  String get drawSignature => 'Draw';
+
+  @override
+  String get signatureEmptyTitle => 'No signatures yet';
+
+  @override
+  String get signatureEmptyBody =>
+      'Photograph a signature on paper, or draw one with your finger.';
+
+  @override
+  String get cleanliness => 'Cleanliness';
+
+  @override
+  String get inkColor => 'Ink';
+
+  @override
+  String get inkOriginal => 'Original';
+
+  @override
+  String get inkBlack => 'Black';
+
+  @override
+  String get inkBlue => 'Dark blue';
+
+  @override
+  String get signatureName => 'Signature name';
+
+  @override
+  String get deleteSignatureTitle => 'Delete this signature?';
+
+  @override
+  String get deleteSignatureBody =>
+      'It will also disappear from every page that uses it.';
+
+  @override
+  String get placeSignature => 'Place signature';
+
+  @override
+  String get confirmPlace => 'Place on page';
+
+  @override
+  String get saveCompressedCopy => 'Save a smaller copy';
+
+  @override
+  String get compressedCopySaved => 'Saved a smaller copy';
+
+  @override
+  String smallerCopyName(String name) {
+    return '$name (smaller)';
+  }
+
+  @override
+  String get cropDone => 'Use this crop';
+
+  @override
+  String get removeBackground => 'Remove background';
 }

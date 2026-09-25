@@ -39,6 +39,13 @@ class _ScanFlowState extends State<ScanFlow> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _session.pageSizeMode =
+        AppScope.of(context).settings.settings.pageSizeMode;
+  }
+
+  @override
   void dispose() {
     _session.removeListener(_onSession);
     _camera?.dispose();

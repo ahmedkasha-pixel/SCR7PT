@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
 import '../app_config.dart';
+import '../geometry/page_aspect.dart';
 import '../geometry/quad.dart';
 import '../../data/models/records.dart';
 import 'enhance.dart';
@@ -31,20 +32,45 @@ class RenderRequest {
     required this.originalJpeg,
     required this.corners,
     required this.filterName,
+    this.pageSizeMode = 'auto',
+    this.forceWidth,
+    this.forceHeight,
   });
 
   final Uint8List originalJpeg;
   final List<double> corners;
   final String filterName;
+  final String pageSizeMode;
+  final int? forceWidth;
+  final int? forceHeight;
+}
+
+/// Arguments for [preparePageRequest] on a background isolate.
+class PrepareRequest {
+  PrepareRequest(this.bytes, this.pageSizeMode);
+
+  final Uint8List bytes;
+  final String pageSizeMode;
 }
 
 /// Decode at capture resolution, detect edges, and preview the default filter.
 PreparedPage preparePage(Uint8List bytes) {
-  final decoded = _decodeFull(bytes);
+  return preparePageRequest(PrepareRequest(bytes, PageSizeMode.auto.name));
+}
+
+PreparedPage preparePageRequest(PrepareRequest request) {
+  final decoded = _decodeFull(request.bytes);
   final quad = detectQuad(decoded);
-  final preview = renderImage(decoded, quad, PageFilter.autoEnhance);
-  final original = _isJpeg(bytes)
-      ? bytes
+  final mode = PageSizeMode.values.asNameMap()[request.pageSizeMode] ??
+      PageSizeMode.auto;
+  final preview = renderImage(
+    decoded,
+    quad,
+    PageFilter.autoEnhance,
+    pageSize: mode,
+  );
+  final original = _isJpeg(request.bytes)
+      ? request.bytes
       : Uint8List.fromList(img.encodeJpg(decoded, quality: 92));
   return PreparedPage(
     originalJpeg: original,
@@ -62,23 +88,65 @@ Uint8List renderRequest(RenderRequest request) {
     request.originalJpeg,
     Quad.fromList(request.corners),
     PageFilter.values.byName(request.filterName),
+    pageSize: PageSizeMode.values.byName(request.pageSizeMode),
+    forceWidth: request.forceWidth,
+    forceHeight: request.forceHeight,
   );
 }
 
-Uint8List renderJpeg(Uint8List originalJpeg, Quad quad, PageFilter filter) {
+Uint8List renderJpeg(
+  Uint8List originalJpeg,
+  Quad quad,
+  PageFilter filter, {
+  PageSizeMode pageSize = PageSizeMode.auto,
+  int? forceWidth,
+  int? forceHeight,
+}) {
   final decoded = img.decodeImage(originalJpeg);
   if (decoded == null) {
     throw const FormatException('unsupported-image');
   }
   final rgb = decoded.convert(format: img.Format.uint8, numChannels: 3);
-  final rendered = renderImage(rgb, quad, filter);
+  final rendered = renderImage(
+    rgb,
+    quad,
+    filter,
+    pageSize: pageSize,
+    forceWidth: forceWidth,
+    forceHeight: forceHeight,
+  );
   return Uint8List.fromList(
     img.encodeJpg(rendered, quality: AppConfig.jpegQuality),
   );
 }
 
-img.Image renderImage(img.Image source, Quad quad, PageFilter filter) {
-  final base = quad.isNearFullFrame() ? source : warpPerspective(source, quad);
+img.Image renderImage(
+  img.Image source,
+  Quad quad,
+  PageFilter filter, {
+  PageSizeMode pageSize = PageSizeMode.auto,
+  int? forceWidth,
+  int? forceHeight,
+}) {
+  final img.Image base;
+  if (quad.isNearFullFrame() && forceWidth == null) {
+    base = source;
+  } else if (quad.isNearFullFrame() && forceWidth != null) {
+    base = img.copyResize(
+      source,
+      width: forceWidth,
+      height: forceHeight ?? forceWidth,
+      interpolation: img.Interpolation.linear,
+    );
+  } else {
+    base = warpPerspective(
+      source,
+      quad,
+      mode: pageSize,
+      forceWidth: forceWidth,
+      forceHeight: forceHeight,
+    );
+  }
   return applyFilter(base, filter);
 }
 
@@ -146,19 +214,30 @@ Quad detectQuad(img.Image source) {
   return quad.isUsable ? quad : Quad.standard;
 }
 
-img.Image warpPerspective(img.Image source, Quad quad) {
+img.Image warpPerspective(
+  img.Image source,
+  Quad quad, {
+  PageSizeMode mode = PageSizeMode.auto,
+  int? forceWidth,
+  int? forceHeight,
+  bool inset = true,
+}) {
   final rgb = source.convert(format: img.Format.uint8, numChannels: 3);
   final view = _Rgb(rgb);
-  final tl = _denorm(quad.topLeft, view.width, view.height);
-  final tr = _denorm(quad.topRight, view.width, view.height);
-  final br = _denorm(quad.bottomRight, view.width, view.height);
-  final bl = _denorm(quad.bottomLeft, view.width, view.height);
+  final sampling = inset ? insetPageQuad(quad) : quad;
+  final tl = _denorm(sampling.topLeft, view.width, view.height);
+  final tr = _denorm(sampling.topRight, view.width, view.height);
+  final br = _denorm(sampling.bottomRight, view.width, view.height);
+  final bl = _denorm(sampling.bottomLeft, view.width, view.height);
 
-  final size = warpOutputSize(
-    sourceWidth: view.width,
-    sourceHeight: view.height,
-    quad: quad,
-  );
+  final size = (forceWidth != null && forceHeight != null)
+      ? (width: math.max(1, forceWidth), height: math.max(1, forceHeight))
+      : pagePixelSize(
+          quad: quad,
+          imageWidth: view.width,
+          imageHeight: view.height,
+          mode: mode,
+        );
   final outW = size.width;
   final outH = size.height;
 
@@ -184,42 +263,26 @@ img.Image warpPerspective(img.Image source, Quad quad) {
   return output;
 }
 
-/// Pixel size of the warped page. The long side stays at the quad's own
-/// resolution, up to [AppConfig.maxImageEdge], so a 12 MP still is not
-/// reduced to a preview.
+/// Pixel size of the warped page. The aspect comes from the vanishing-point
+/// recovery in [pagePixelSize], then snaps to A4 or Letter when [mode] asks.
 ({int width, int height}) warpOutputSize({
   required int sourceWidth,
   required int sourceHeight,
   required Quad quad,
+  PageSizeMode mode = PageSizeMode.auto,
 }) {
-  if (quad.isNearFullFrame()) {
-    return _capEdge(sourceWidth, sourceHeight);
-  }
-  final tl = _denorm(quad.topLeft, sourceWidth, sourceHeight);
-  final tr = _denorm(quad.topRight, sourceWidth, sourceHeight);
-  final br = _denorm(quad.bottomRight, sourceWidth, sourceHeight);
-  final bl = _denorm(quad.bottomLeft, sourceWidth, sourceHeight);
-  final outW = math.max(32, math.max(_dist(tl, tr), _dist(bl, br)).round());
-  final outH = math.max(32, math.max(_dist(tl, bl), _dist(tr, br)).round());
-  return _capEdge(outW, outH);
-}
-
-({int width, int height}) _capEdge(int width, int height) {
-  final longEdge = math.max(width, height);
-  if (longEdge <= AppConfig.maxImageEdge) {
-    return (width: width, height: height);
-  }
-  final scale = AppConfig.maxImageEdge / longEdge;
-  return (
-    width: math.max(32, (width * scale).round()),
-    height: math.max(32, (height * scale).round()),
+  return pagePixelSize(
+    quad: quad,
+    imageWidth: sourceWidth,
+    imageHeight: sourceHeight,
+    mode: mode,
   );
 }
 
-/// A4 page photographed on a 12 MP sensor (4000×3000) held in portrait.
+/// A4 page photographed straight-on by a 12 MP sensor (3000×4000 portrait).
 ///
-/// The page fills the frame height. This is the default export size before
-/// Phase 2 compression.
+/// Auto page size snaps that ratio to 300 dpi A4 (2480×3508). The long side
+/// stays well above 2000 px.
 ({int width, int height}) a4ExportSizeFrom12Mp() {
   const sourceWidth = 3000;
   const sourceHeight = 4000;
@@ -410,12 +473,6 @@ _Pt _denorm(NormPoint point, int width, int height) => _Pt(
   point.x.clamp(0.0, 1.0) * (width - 1),
   point.y.clamp(0.0, 1.0) * (height - 1),
 );
-
-double _dist(_Pt a, _Pt b) {
-  final dx = a.x - b.x;
-  final dy = a.y - b.y;
-  return math.sqrt(dx * dx + dy * dy);
-}
 
 List<double> _homography({required List<_Pt> from, required List<_Pt> to}) {
   final matrix = List.generate(8, (_) => List<double>.filled(9, 0));

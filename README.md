@@ -9,8 +9,8 @@ The in-app name lives in `lib/core/app_config.dart` (`AppConfig.appName`). The l
 - Camera capture with automatic page-edge detection, draggable corners, perspective correction, and four filters: original, grayscale, black & white, and brighten.
 - Multi-page documents: add pages, reorder, delete. Import one or more images from the gallery.
 - Folders: create, rename, delete. Documents: name (default `yyyy-MM-dd HH-mm`), rename, move, delete, search by name.
-- Home shows folders, recent documents, and a scan button. Settings cover language and the default share format (PDF or JPG).
-- Share uses the native share sheet (`share_plus`), so the file can go to WhatsApp, Telegram, mail, or any other installed app. PDFs are built on the device.
+- Home shows folders, recent documents, and a scan button. Settings cover language, the default share format (PDF or JPG), and page size (Auto, A4, Letter, or Original).
+- Share uses the native share sheet (`share_plus`), so the file can go to WhatsApp, Telegram, mail, or any other installed app. PDFs are built on the device. High, medium, and low compression show the real file size before sharing. Medium is the default.
 
 Arabic is the default language and the layout is right-to-left. English follows the device language, or an explicit choice in Settings.
 
@@ -22,8 +22,8 @@ lib/
   app/                         AppScope, LibraryController, SettingsController
   core/                        name, theme, geometry, image processing, PDF
   data/                        sqflite schema, files, repositories
-  features/home|folder|scan|document|settings|share
-  features/upcoming/           phase 2 and 3 interfaces (not implemented)
+  features/home|folder|scan|document|settings|share|signature
+  features/upcoming/           phase 3 cloud slot (not implemented)
   l10n/                        Arabic and English strings
 ```
 
@@ -31,7 +31,9 @@ lib/
 
 `LibraryController` loads folder and document metadata and filters search in memory after that load. `DocumentRepository` is the only writer of SQLite rows and page files. Page images live under the app documents directory (`docscan/documents/{id}/`). Metadata lives in `docscan.db`.
 
-Scanning runs in `ScanSession`. Heavy work (`preparePage`, `renderRequest`) goes through `compute` so the UI isolate stays responsive. The shutter uses `ResolutionPreset.max` and `takePicture` (a still, not a preview frame). `document_processor.dart` is pure Dart (`package:image`): edge detection on a small copy, full-resolution homography, then the filter. New scans default to Auto enhance, which flattens shadows before export. The filtered JPEG (quality 88) is what the PDF and JPG share sheet embed. The long edge is kept up to 4096 px (`AppConfig.maxImageEdge`). A document holds at most 40 pages.
+Scanning runs in `ScanSession`. Heavy work (`preparePage`, `renderRequest`) goes through `compute` so the UI isolate stays responsive. The shutter uses `ResolutionPreset.max` and `takePicture` (a still, not a preview frame). `document_processor.dart` is pure Dart (`package:image`): edge detection on a small copy, full-resolution homography, then the filter. After the crop, the page aspect is recovered from the two vanishing points (focal length from the Zhang–He relation) so an angled photo is not stretched. Auto snaps to A4 or Letter when the ratio is within 6 percent; a full-resolution capture is written at 300 dpi (A4 is 2480×3508). Every page in one document uses the first page's pixel size. A small inset (0.75 percent) is pulled in before the warp so background slivers do not remain on the border. New scans default to Auto enhance, which flattens shadows before export. The stored JPEG (quality 88) keeps the filter. Sharing recompresses that master. The long edge is kept up to 4096 px (`AppConfig.maxImageEdge`). A document holds at most 40 pages.
+
+Signatures are transparent PNGs. Import from the camera, the gallery, or a finger drawing; crop; then drop the paper with a local brightness mask. Placements are stored on the page and burned in only when the page is shown or exported, so the filtered master stays editable.
 
 ## Packages and why
 
@@ -41,7 +43,7 @@ Scanning runs in `ScanSession`. Heavy work (`preparePage`, `renderRequest`) goes
 | `image_picker` 1.2 | Gallery import | Official plugin. Uses the Android photo picker and iOS PHPicker, so the app does not request broad photo-library permission on Android 13+. |
 | `image` 4.x | Decode, edges, warp, filters, JPEG | Pure Dart. Same results on both platforms and testable without OpenCV native binaries. |
 | `sqflite` 2.4 | Metadata | Mature SQLite plugin on Android and iOS. Tests use `sqflite_common_ffi`. |
-| `pdf` 3.x | Local PDF | Embeds each page JPEG on A4. No network. |
+| `pdf` 3.x | Local PDF | Embeds each page JPEG on A4, Letter, or a matching custom size. No network. |
 | `share_plus` 12 | System share sheet | Official share plugin. File sharing is a mobile feature (not supported on Linux desktop). |
 | `shared_preferences` | Language and default share format | Small key-value settings. |
 | `permission_handler` | Open system settings if camera permission was denied | The camera plugin itself requests the camera permission. See the iOS note below. |
@@ -55,14 +57,9 @@ Not used, on purpose:
 
 Edge detection is a heuristic, not a machine-learning model. A flat or low-contrast frame falls back to a slight inset quad the user can drag.
 
-## Phase 2 and 3 (not built)
+## Phase 3 (not built)
 
-Settings lists these as upcoming. The types already exist so a later phase can implement them without moving navigation or storage.
-
-Phase 2 — `lib/features/upcoming/compression_service.dart` and `signature_service.dart`
-
-- Compression levels high / medium / low, showing the resulting file size before the user commits.
-- Signatures. The main path is importing a signature photo from the camera or gallery, removing the white/paper background, saving a transparent PNG, and placing it on a page with move and resize. Drawing with a finger is the secondary path. The `signatures` table is created in schema version 1 and is unused.
+Settings still lists Google Drive as upcoming.
 
 Phase 3 — `lib/features/upcoming/cloud_storage.dart`
 

@@ -102,9 +102,9 @@
     }
   },
   "compressionTitle": "Compression",
-  "compressionBody": "High, medium, and low quality, with the file size after compression.",
+  "compressionBody": "High, medium, and low quality, with the file size shown before you share.",
   "signatureTitle": "Signatures",
-  "signatureBody": "Import a signature from the camera or gallery, remove the paper background, and place it on a page. Drawing with a finger is a later option.",
+  "signatureBody": "Photograph a signature, remove the paper, and place it on a page. You can also draw one.",
   "cloudTitle": "Google Drive",
   "cloudBody": "Sign in with Google and save documents to Drive. Other clouds can be added later.",
   "storageNote": "Documents are stored only on this device until you share them.",
@@ -126,5 +126,42 @@
       "count": {"type": "int"}
     }
   },
-  "moreActions": "More"
+  "moreActions": "More",
+  "pageSize": "Page size",
+  "pageSizeAuto": "Auto",
+  "pageSizeA4": "A4",
+  "pageSizeLetter": "Letter",
+  "pageSizeOriginal": "Original",
+  "quality": "Quality",
+  "qualityHigh": "High",
+  "qualityMedium": "Medium",
+  "qualityLow": "Low",
+  "originalSize": "Original",
+  "signatures": "Signatures",
+  "addSignature": "Add signature",
+  "fromCamera": "Camera",
+  "fromGallery": "Gallery",
+  "drawSignature": "Draw",
+  "signatureEmptyTitle": "No signatures yet",
+  "signatureEmptyBody": "Photograph a signature on paper, or draw one with your finger.",
+  "cleanliness": "Cleanliness",
+  "inkColor": "Ink",
+  "inkOriginal": "Original",
+  "inkBlack": "Black",
+  "inkBlue": "Dark blue",
+  "signatureName": "Signature name",
+  "deleteSignatureTitle": "Delete this signature?",
+  "deleteSignatureBody": "It will also disappear from every page that uses it.",
+  "placeSignature": "Place signature",
+  "confirmPlace": "Place on page",
+  "saveCompressedCopy": "Save a smaller copy",
+  "compressedCopySaved": "Saved a smaller copy",
+  "smallerCopyName": "{name} (smaller)",
+  "@smallerCopyName": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "cropDone": "Use this crop",
+  "removeBackground": "Remove background"
 }

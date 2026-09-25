@@ -7,6 +7,7 @@ import 'package:docscan/app/settings_controller.dart';
 import 'package:docscan/data/db/app_database.dart';
 import 'package:docscan/data/repositories/document_repository.dart';
 import 'package:docscan/data/repositories/settings_repository.dart';
+import 'package:docscan/data/repositories/signature_repository.dart';
 import 'package:docscan/data/storage/file_store.dart';
 import 'package:docscan/features/scan/gallery_picker.dart';
 import 'package:docscan/features/scan/scan_camera.dart';
@@ -71,6 +72,7 @@ class TestHarness {
   TestHarness({
     required this.app,
     required this.documents,
+    required this.signatures,
     required this.library,
     required this.directory,
     required this.shared,
@@ -79,6 +81,7 @@ class TestHarness {
 
   final DocScanApp app;
   final DocumentRepository documents;
+  final SignatureRepository signatures;
   final LibraryController library;
   final Directory directory;
   final List<ShareParams> shared;
@@ -103,10 +106,9 @@ Future<TestHarness> createHarness({
   SharedPreferences.setMockInitialValues(preferences);
   final directory = await Directory.systemTemp.createTemp('docscan_ui_');
   final files = FileStore(Directory('${directory.path}/files'));
-  final documents = DocumentRepository(
-    database: AppDatabase(path: '${directory.path}/db.sqlite'),
-    files: files,
-  );
+  final database = AppDatabase(path: '${directory.path}/db.sqlite');
+  final documents = DocumentRepository(database: database, files: files);
+  final signatures = SignatureRepository(database: database, files: files);
   final settings = SettingsController(SettingsRepository());
   await settings.load();
   final library = LibraryController(documents);
@@ -115,7 +117,9 @@ Future<TestHarness> createHarness({
     library: library,
     settings: settings,
     documents: documents,
+    signatures: signatures,
     sharer: DocumentSharer(
+      signatures: signatures,
       files: files,
       share: (params) async {
         shared.add(params);
@@ -128,6 +132,7 @@ Future<TestHarness> createHarness({
   return TestHarness(
     app: app,
     documents: documents,
+    signatures: signatures,
     library: library,
     directory: directory,
     shared: shared,

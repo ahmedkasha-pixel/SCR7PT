@@ -6,12 +6,16 @@ class SettingsRepository {
   static const languageKey = 'language_code';
   static const shareFormatKey = 'share_format';
   static const appearanceKey = 'theme_mode';
+  static const pageSizeKey = 'page_size_mode';
+  static const compressionKey = 'compression_level';
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
     final language = prefs.getString(languageKey);
     final share = prefs.getString(shareFormatKey);
     final appearance = prefs.getString(appearanceKey);
+    final pageSize = prefs.getString(pageSizeKey);
+    final compression = prefs.getString(compressionKey);
     return AppSettings(
       languageCode: (language == null || language.isEmpty) ? null : language,
       shareFormat: share == ShareFormat.jpg.name
@@ -20,6 +24,11 @@ class SettingsRepository {
       appearance: appearance == AppAppearance.light.name
           ? AppAppearance.light
           : AppAppearance.dark,
+      pageSizeMode: PageSizeMode.values.asNameMap()[pageSize] ??
+          PageSizeMode.auto,
+      compression:
+          CompressionLevel.values.asNameMap()[compression] ??
+          CompressionLevel.medium,
     );
   }
 
@@ -32,5 +41,7 @@ class SettingsRepository {
     }
     await prefs.setString(shareFormatKey, settings.shareFormat.name);
     await prefs.setString(appearanceKey, settings.appearance.name);
+    await prefs.setString(pageSizeKey, settings.pageSizeMode.name);
+    await prefs.setString(compressionKey, settings.compression.name);
   }
 }

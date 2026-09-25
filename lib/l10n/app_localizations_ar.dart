@@ -286,14 +286,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get compressionBody =>
-      'جودة عالية ومتوسطة ومنخفضة، مع حجم الملف بعد الضغط.';
+      'جودة عالية ومتوسطة ومنخفضة، مع حجم الملف قبل المشاركة.';
 
   @override
   String get signatureTitle => 'التوقيعات';
 
   @override
   String get signatureBody =>
-      'استيراد توقيع من الكاميرا أو المعرض، وإزالة خلفية الورق، ثم وضعه على أي صفحة. الرسم بالإصبع خيار لاحق.';
+      'صوّر توقيعاً، أزل الورق، وضعه على الصفحة. يمكنك أيضاً رسمه بإصبعك.';
 
   @override
   String get cloudTitle => 'Google Drive';
@@ -349,4 +349,102 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get moreActions => 'المزيد';
+
+  @override
+  String get pageSize => 'حجم الصفحة';
+
+  @override
+  String get pageSizeAuto => 'تلقائي';
+
+  @override
+  String get pageSizeA4 => 'A4';
+
+  @override
+  String get pageSizeLetter => 'Letter';
+
+  @override
+  String get pageSizeOriginal => 'الأصلي';
+
+  @override
+  String get quality => 'الجودة';
+
+  @override
+  String get qualityHigh => 'عالية';
+
+  @override
+  String get qualityMedium => 'متوسطة';
+
+  @override
+  String get qualityLow => 'منخفضة';
+
+  @override
+  String get originalSize => 'الأصلي';
+
+  @override
+  String get signatures => 'التوقيعات';
+
+  @override
+  String get addSignature => 'إضافة توقيع';
+
+  @override
+  String get fromCamera => 'الكاميرا';
+
+  @override
+  String get fromGallery => 'المعرض';
+
+  @override
+  String get drawSignature => 'رسم';
+
+  @override
+  String get signatureEmptyTitle => 'لا توجد توقيعات';
+
+  @override
+  String get signatureEmptyBody => 'صوّر توقيعاً على ورقة، أو ارسمه بإصبعك.';
+
+  @override
+  String get cleanliness => 'الوضوح';
+
+  @override
+  String get inkColor => 'لون الحبر';
+
+  @override
+  String get inkOriginal => 'الأصلي';
+
+  @override
+  String get inkBlack => 'أسود';
+
+  @override
+  String get inkBlue => 'أزرق داكن';
+
+  @override
+  String get signatureName => 'اسم التوقيع';
+
+  @override
+  String get deleteSignatureTitle => 'حذف هذا التوقيع؟';
+
+  @override
+  String get deleteSignatureBody => 'سيختفي أيضاً من كل صفحة يستخدمها.';
+
+  @override
+  String get placeSignature => 'وضع التوقيع';
+
+  @override
+  String get confirmPlace => 'تثبيت على الصفحة';
+
+  @override
+  String get saveCompressedCopy => 'حفظ نسخة أصغر';
+
+  @override
+  String get compressedCopySaved => 'حُفظت نسخة أصغر';
+
+  @override
+  String smallerCopyName(String name) {
+    return '$name (أصغر)';
+  }
+
+  @override
+  String get cropDone => 'استخدام هذا القص';
+
+  @override
+  String get removeBackground => 'إزالة الخلفية';
 }

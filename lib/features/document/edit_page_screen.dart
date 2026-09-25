@@ -61,12 +61,23 @@ class _EditPageScreenState extends State<EditPageScreen> {
     final session = _session;
     final l10n = AppLocalizations.of(context);
     if (session == null || session.pages.isEmpty) return;
-    final documents = AppScope.of(context).documents;
-    final navigator = Navigator.of(context);
-    unawaited(showBusyDialog(context, l10n.processing));
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-    try {
-      await session.commitPending();
+      final scope = AppScope.of(context);
+      final documents = scope.documents;
+      final navigator = Navigator.of(context);
+      unawaited(showBusyDialog(context, l10n.processing));
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      try {
+        session.pageSizeMode = scope.settings.settings.pageSizeMode;
+        final siblings = await documents.pagesFor(widget.page.documentId);
+        if (siblings.length > 1) {
+          final bytes = await File(siblings.first.processedPath).readAsBytes();
+          final info = img.findDecoderForData(bytes)?.startDecode(bytes);
+          if (info != null && info.width > 0 && info.height > 0) {
+            session.forceWidth = info.width;
+            session.forceHeight = info.height;
+          }
+        }
+        await session.commitPending();
       if (!mounted) return;
       final page = session.current!;
       await documents.updatePage(

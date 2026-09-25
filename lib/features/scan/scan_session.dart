@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../core/app_config.dart';
+import '../../core/geometry/page_aspect.dart';
 import '../../core/geometry/quad.dart';
 import '../../core/processing/document_processor.dart';
 import '../../data/models/records.dart';
@@ -30,9 +31,14 @@ class EditablePage {
 }
 
 class ScanSession extends ChangeNotifier {
-  ScanSession({this.folderId});
+  ScanSession({this.folderId, this.pageSizeMode = PageSizeMode.auto});
 
   String? folderId;
+  PageSizeMode pageSizeMode;
+
+  /// When set, every page is rendered at this size (one document, one size).
+  int? forceWidth;
+  int? forceHeight;
   final List<EditablePage> pages = [];
   int index = 0;
   bool busy = false;
@@ -46,7 +52,10 @@ class ScanSession extends ChangeNotifier {
       throw StateError('page-limit');
     }
     await _guard(() async {
-      final prepared = await compute(preparePage, bytes);
+      final prepared = await compute(
+        preparePageRequest,
+        PrepareRequest(bytes, pageSizeMode.name),
+      );
       pages.add(
         EditablePage(
           id: '${DateTime.now().microsecondsSinceEpoch}_${_ids++}',
@@ -130,14 +139,35 @@ class ScanSession extends ChangeNotifier {
   }
 
   Future<void> commitPending() async {
+    if (pages.isEmpty) return;
+    final size = _documentSize();
     for (final page in pages) {
       page.cropping = false;
-      await _rerender(page);
+      await _rerender(page, forceWidth: size.width, forceHeight: size.height);
       page.stale = false;
     }
   }
 
-  Future<void> _rerender(EditablePage page) {
+  ({int width, int height}) _documentSize() {
+    final forcedW = forceWidth;
+    final forcedH = forceHeight;
+    if (forcedW != null && forcedH != null) {
+      return (width: forcedW, height: forcedH);
+    }
+    final first = pages.first;
+    return pagePixelSize(
+      quad: first.corners,
+      imageWidth: first.width,
+      imageHeight: first.height,
+      mode: pageSizeMode,
+    );
+  }
+
+  Future<void> _rerender(
+    EditablePage page, {
+    int? forceWidth,
+    int? forceHeight,
+  }) {
     return _guard(() async {
       page.previewJpeg = await compute(
         renderRequest,
@@ -145,6 +175,9 @@ class ScanSession extends ChangeNotifier {
           originalJpeg: page.originalJpeg,
           corners: page.corners.toList(),
           filterName: page.filter.name,
+          pageSizeMode: pageSizeMode.name,
+          forceWidth: forceWidth,
+          forceHeight: forceHeight,
         ),
       );
     });

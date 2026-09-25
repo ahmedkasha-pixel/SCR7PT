@@ -1,13 +1,19 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
+import '../../core/processing/compress.dart';
+import '../../core/processing/signature_stamp.dart';
 import '../../data/models/records.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/dialogs.dart';
 import '../../widgets/share_sheet.dart';
 import '../home/home_screen.dart';
+import '../signature/signature_place_screen.dart';
+import '../signature/signatures_screen.dart';
 import 'edit_page_screen.dart';
 
 class DocumentScreen extends StatefulWidget {
@@ -25,6 +31,7 @@ class DocumentScreen extends StatefulWidget {
 class _DocumentScreenState extends State<DocumentScreen> {
   late DocumentRecord _document = widget.document;
   List<PageRecord> _pages = const [];
+  final Map<String, Uint8List> _stamped = {};
   int _index = 0;
   bool _loading = true;
   final _controller = PageController();
@@ -62,6 +69,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
       if (_index >= pages.length) _index = pages.isEmpty ? 0 : pages.length - 1;
       _loading = false;
     });
+    await _refreshStamps();
   }
 
   @override
@@ -75,6 +83,12 @@ class _DocumentScreenState extends State<DocumentScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          IconButton(
+            key: const Key('document-sign'),
+            tooltip: l10n.placeSignature,
+            onPressed: _pages.isEmpty ? null : _sign,
+            icon: const Icon(Icons.draw_outlined),
+          ),
           IconButton(
             tooltip: l10n.editPage,
             onPressed: _pages.isEmpty ? null : _edit,
@@ -93,11 +107,17 @@ class _DocumentScreenState extends State<DocumentScreen> {
                   _deletePage();
                 case 'delete':
                   _delete();
+                case 'compress':
+                  _saveCopy();
               }
             },
             itemBuilder: (context) => [
               PopupMenuItem(value: 'rename', child: Text(l10n.rename)),
               PopupMenuItem(value: 'move', child: Text(l10n.move)),
+              PopupMenuItem(
+                value: 'compress',
+                child: Text(l10n.saveCompressedCopy),
+              ),
               PopupMenuItem(value: 'reorder', child: Text(l10n.reorderPages)),
               if (_pages.length > 1)
                 PopupMenuItem(
@@ -122,10 +142,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
                       return Padding(
                         padding: const EdgeInsets.all(16),
                         child: InteractiveViewer(
-                          child: Image.file(
-                            File(_pages[index].processedPath),
-                            fit: BoxFit.contain,
-                          ),
+                          child: _pageImage(_pages[index]),
                         ),
                       );
                     },
@@ -205,6 +222,132 @@ class _DocumentScreenState extends State<DocumentScreen> {
               ],
             ),
     );
+  }
+
+  Widget _pageImage(PageRecord page) {
+    final stamped = _stamped[page.id];
+    if (stamped != null) {
+      return Image.memory(stamped, fit: BoxFit.contain);
+    }
+    return Image.file(File(page.processedPath), fit: BoxFit.contain);
+  }
+
+  Future<void> _refreshStamps() async {
+    final scope = AppScope.of(context);
+    final next = <String, Uint8List>{};
+    for (final page in _pages) {
+      final placements = await scope.signatures.placementsForPage(page.id);
+      if (placements.isEmpty) continue;
+      final marks = <StampPayload>[];
+      for (final placement in placements) {
+        final library = await scope.signatures.list();
+        SignatureRecord? signature;
+        for (final item in library) {
+          if (item.id == placement.signatureId) signature = item;
+        }
+        if (signature == null) continue;
+        marks.add(
+          StampPayload(
+            png: await File(signature.imagePath).readAsBytes(),
+            centerX: placement.centerX,
+            centerY: placement.centerY,
+            width: placement.width,
+            height: placement.height,
+            rotation: placement.rotation,
+          ),
+        );
+      }
+      if (marks.isEmpty) continue;
+      final jpeg = await File(page.processedPath).readAsBytes();
+      final rendered = await compute(
+        renderExport,
+        RenderExportRequest(
+          pages: [jpeg],
+          stamps: [marks],
+          levelName: CompressionLevel.high.name,
+        ),
+      );
+      next[page.id] = rendered.first;
+    }
+    if (!mounted) return;
+    setState(() {
+      _stamped
+        ..clear()
+        ..addAll(next);
+    });
+  }
+
+  Future<void> _sign() async {
+    final page = _pages[_index];
+    final chosen = await Navigator.push<SignatureRecord>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SignaturesScreen(selecting: true),
+      ),
+    );
+    if (chosen == null || !mounted) return;
+    final scope = AppScope.of(context);
+    final png = await File(chosen.imagePath).readAsBytes();
+    final jpeg = await File(page.processedPath).readAsBytes();
+    if (!mounted) return;
+    final draft = await Navigator.push<PlacementDraft>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SignaturePlaceScreen(
+          pageJpeg: jpeg,
+          signaturePng: png,
+        ),
+      ),
+    );
+    if (draft == null || !mounted) return;
+    await scope.signatures.place(
+      pageId: page.id,
+      signatureId: chosen.id,
+      centerX: draft.centerX,
+      centerY: draft.centerY,
+      width: draft.width,
+      height: draft.height,
+      rotation: draft.rotation,
+    );
+    await _refreshStamps();
+  }
+
+  Future<void> _saveCopy() async {
+    final l10n = AppLocalizations.of(context);
+    final scope = AppScope.of(context);
+    unawaited(showBusyDialog(context, l10n.processing));
+    try {
+      final images = await scope.sharer.exportPages(
+        pages: _pages,
+        compression: CompressionLevel.medium,
+      );
+      await scope.documents.createDocument(
+        name: l10n.smallerCopyName(_document.name),
+        folderId: _document.folderId,
+        pages: [
+          for (var i = 0; i < _pages.length; i++)
+            NewPage(
+              id: scope.documents.nextId(),
+              originalJpeg: await File(_pages[i].originalPath).readAsBytes(),
+              processedJpeg: images[i],
+              filter: _pages[i].filter,
+              corners: _pages[i].corners,
+            ),
+        ],
+      );
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.compressedCopySaved)),
+      );
+      await scope.library.refresh();
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.couldNotSave)),
+      );
+    }
   }
 
   Future<void> _edit() async {

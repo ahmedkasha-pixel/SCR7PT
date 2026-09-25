@@ -587,7 +587,7 @@ abstract class AppLocalizations {
   /// No description provided for @compressionBody.
   ///
   /// In en, this message translates to:
-  /// **'High, medium, and low quality, with the file size after compression.'**
+  /// **'High, medium, and low quality, with the file size shown before you share.'**
   String get compressionBody;
 
   /// No description provided for @signatureTitle.
@@ -599,7 +599,7 @@ abstract class AppLocalizations {
   /// No description provided for @signatureBody.
   ///
   /// In en, this message translates to:
-  /// **'Import a signature from the camera or gallery, remove the paper background, and place it on a page. Drawing with a finger is a later option.'**
+  /// **'Photograph a signature, remove the paper, and place it on a page. You can also draw one.'**
   String get signatureBody;
 
   /// No description provided for @cloudTitle.
@@ -703,6 +703,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More'**
   String get moreActions;
+
+  /// No description provided for @pageSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Page size'**
+  String get pageSize;
+
+  /// No description provided for @pageSizeAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get pageSizeAuto;
+
+  /// No description provided for @pageSizeA4.
+  ///
+  /// In en, this message translates to:
+  /// **'A4'**
+  String get pageSizeA4;
+
+  /// No description provided for @pageSizeLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'Letter'**
+  String get pageSizeLetter;
+
+  /// No description provided for @pageSizeOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get pageSizeOriginal;
+
+  /// No description provided for @quality.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality'**
+  String get quality;
+
+  /// No description provided for @qualityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get qualityHigh;
+
+  /// No description provided for @qualityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get qualityMedium;
+
+  /// No description provided for @qualityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get qualityLow;
+
+  /// No description provided for @originalSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get originalSize;
+
+  /// No description provided for @signatures.
+  ///
+  /// In en, this message translates to:
+  /// **'Signatures'**
+  String get signatures;
+
+  /// No description provided for @addSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Add signature'**
+  String get addSignature;
+
+  /// No description provided for @fromCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get fromCamera;
+
+  /// No description provided for @fromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get fromGallery;
+
+  /// No description provided for @drawSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw'**
+  String get drawSignature;
+
+  /// No description provided for @signatureEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No signatures yet'**
+  String get signatureEmptyTitle;
+
+  /// No description provided for @signatureEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Photograph a signature on paper, or draw one with your finger.'**
+  String get signatureEmptyBody;
+
+  /// No description provided for @cleanliness.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleanliness'**
+  String get cleanliness;
+
+  /// No description provided for @inkColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Ink'**
+  String get inkColor;
+
+  /// No description provided for @inkOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get inkOriginal;
+
+  /// No description provided for @inkBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get inkBlack;
+
+  /// No description provided for @inkBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark blue'**
+  String get inkBlue;
+
+  /// No description provided for @signatureName.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature name'**
+  String get signatureName;
+
+  /// No description provided for @deleteSignatureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this signature?'**
+  String get deleteSignatureTitle;
+
+  /// No description provided for @deleteSignatureBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It will also disappear from every page that uses it.'**
+  String get deleteSignatureBody;
+
+  /// No description provided for @placeSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Place signature'**
+  String get placeSignature;
+
+  /// No description provided for @confirmPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place on page'**
+  String get confirmPlace;
+
+  /// No description provided for @saveCompressedCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a smaller copy'**
+  String get saveCompressedCopy;
+
+  /// No description provided for @compressedCopySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved a smaller copy'**
+  String get compressedCopySaved;
+
+  /// No description provided for @smallerCopyName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (smaller)'**
+  String smallerCopyName(String name);
+
+  /// No description provided for @cropDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this crop'**
+  String get cropDone;
+
+  /// No description provided for @removeBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove background'**
+  String get removeBackground;
 }
 
 class _AppLocalizationsDelegate

@@ -138,10 +138,12 @@ void main() {
     );
   });
 
-  test('a 12 MP portrait A4 page stays near the sensor resolution', () {
+  test('a 12 MP portrait A4 page exports at 300 dpi A4', () {
     final size = a4ExportSizeFrom12Mp();
-    expect(size.width, inInclusiveRange(2700, 3000));
-    expect(size.height, inInclusiveRange(3900, 4096));
+    expect(size.width, 2480);
+    expect(size.height, 3508);
+    final ratio = size.height / size.width;
+    expect((ratio - (297 / 210)).abs() / (297 / 210), lessThan(0.01));
     expect(
       math.max(size.width, size.height),
       greaterThanOrEqualTo(2000),

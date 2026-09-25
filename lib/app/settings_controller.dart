@@ -44,4 +44,16 @@ class SettingsController extends ChangeNotifier {
     await _repository.save(settings);
     notifyListeners();
   }
+
+  Future<void> setPageSizeMode(PageSizeMode mode) async {
+    settings = settings.copyWith(pageSizeMode: mode);
+    await _repository.save(settings);
+    notifyListeners();
+  }
+
+  Future<void> setCompression(CompressionLevel level) async {
+    settings = settings.copyWith(compression: level);
+    await _repository.save(settings);
+    notifyListeners();
+  }
 }

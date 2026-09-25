@@ -14,6 +14,8 @@ class FileStore {
 
   String exportPath(String fileName) => '${root.path}/exports/$fileName';
 
+  String signaturePath(String id) => '${root.path}/signatures/$id.png';
+
   Future<void> writeBytes(String path, List<int> bytes) async {
     final file = File(path);
     await file.parent.create(recursive: true);

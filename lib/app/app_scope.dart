@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../data/repositories/document_repository.dart';
+import '../data/repositories/signature_repository.dart';
 import '../features/scan/gallery_picker.dart';
 import '../features/scan/scan_camera.dart';
 import '../features/share/document_sharer.dart';
@@ -13,6 +14,7 @@ class AppScope extends InheritedWidget {
     required this.library,
     required this.settings,
     required this.documents,
+    required this.signatures,
     required this.gallery,
     required this.createCamera,
     required this.sharer,
@@ -24,6 +26,7 @@ class AppScope extends InheritedWidget {
   final LibraryController library;
   final SettingsController settings;
   final DocumentRepository documents;
+  final SignatureRepository signatures;
   final GalleryPicker gallery;
   final ScanCamera Function() createCamera;
   final DocumentSharer sharer;

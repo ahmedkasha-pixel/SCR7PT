@@ -1,9 +1,8 @@
 import 'dart:typed_data';
 
-/// Phase 2. Quality levels for local file compression.
-enum CompressionLevel { high, medium, low }
+import '../../data/models/records.dart';
 
-/// Phase 2 slot. The UI lists this work as upcoming and does not call it yet.
+/// Phase 2 slot. Sharing uses [CompressionLevel] directly.
 ///
 /// A later implementation should recompress page JPEGs at [CompressionLevel]
 /// and report the resulting byte size before the user commits.

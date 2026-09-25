@@ -96,6 +96,36 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+              Text(
+                l10n.pageSize,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final mode in PageSizeMode.values)
+                    ChoiceChip(
+                      key: Key('page-size-${mode.name}'),
+                      label: Text(_pageSizeLabel(l10n, mode)),
+                      selected: current.pageSizeMode == mode,
+                      onSelected: (_) => settings.setPageSizeMode(mode),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Card(
+                child: ListTile(
+                  key: const Key('open-signatures'),
+                  leading: const Icon(Icons.draw_outlined),
+                  title: Text(l10n.signatureTitle),
+                  subtitle: Text(l10n.signatureBody),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.pushNamed(context, '/signatures'),
+                ),
+              ),
               const SizedBox(height: 28),
               Text(
                 l10n.upcoming,
@@ -103,6 +133,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               for (final entry in UpcomingServices.catalog)
+                if (entry.kind == UpcomingKind.googleDrive)
                 Card(
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
@@ -129,6 +160,19 @@ class SettingsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _pageSizeLabel(AppLocalizations l10n, PageSizeMode mode) {
+    switch (mode) {
+      case PageSizeMode.auto:
+        return l10n.pageSizeAuto;
+      case PageSizeMode.a4:
+        return l10n.pageSizeA4;
+      case PageSizeMode.letter:
+        return l10n.pageSizeLetter;
+      case PageSizeMode.original:
+        return l10n.pageSizeOriginal;
+    }
   }
 
   IconData _icon(UpcomingKind kind) {

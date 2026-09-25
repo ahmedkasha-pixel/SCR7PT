@@ -11,7 +11,7 @@ class AppDatabase {
     if (existing != null) return existing;
     final opened = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -56,6 +56,20 @@ class AppDatabase {
             created_at INTEGER NOT NULL
           )
         ''');
+        await db.execute('''
+          CREATE TABLE signature_placements (
+            id TEXT PRIMARY KEY,
+            page_id TEXT NOT NULL,
+            signature_id TEXT NOT NULL,
+            center_x REAL NOT NULL,
+            center_y REAL NOT NULL,
+            width REAL NOT NULL,
+            height REAL NOT NULL,
+            rotation REAL NOT NULL,
+            FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
+            FOREIGN KEY (signature_id) REFERENCES signatures(id) ON DELETE CASCADE
+          )
+        ''');
         await db.execute(
           'CREATE INDEX idx_documents_folder ON documents(folder_id)',
         );
@@ -65,6 +79,30 @@ class AppDatabase {
         await db.execute(
           'CREATE INDEX idx_pages_document ON pages(document_id, position)',
         );
+        await db.execute(
+          'CREATE INDEX idx_placements_page ON signature_placements(page_id)',
+        );
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS signature_placements (
+              id TEXT PRIMARY KEY,
+              page_id TEXT NOT NULL,
+              signature_id TEXT NOT NULL,
+              center_x REAL NOT NULL,
+              center_y REAL NOT NULL,
+              width REAL NOT NULL,
+              height REAL NOT NULL,
+              rotation REAL NOT NULL,
+              FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
+              FOREIGN KEY (signature_id) REFERENCES signatures(id) ON DELETE CASCADE
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_placements_page ON signature_placements(page_id)',
+          );
+        }
       },
     );
     _database = opened;

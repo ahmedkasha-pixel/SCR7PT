@@ -108,6 +108,11 @@ void main() {
     await _settle(tester);
     expect(find.text('الإعدادات'), findsOneWidget);
     expect(find.text('التوقيعات'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Google Drive'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Google Drive'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('lang-en')));

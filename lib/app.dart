@@ -8,6 +8,7 @@ import 'core/app_config.dart';
 import 'core/theme/app_theme.dart';
 import 'data/models/records.dart';
 import 'data/repositories/document_repository.dart';
+import 'data/repositories/signature_repository.dart';
 import 'features/document/document_screen.dart';
 import 'features/folder/folder_screen.dart';
 import 'features/home/home_screen.dart';
@@ -15,6 +16,7 @@ import 'features/scan/gallery_picker.dart';
 import 'features/scan/scan_camera.dart';
 import 'features/scan/scan_flow.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/signature/signatures_screen.dart';
 import 'features/share/document_sharer.dart';
 import 'features/upcoming/upcoming_services.dart';
 import 'l10n/app_localizations.dart';
@@ -37,6 +39,7 @@ class DocScanApp extends StatelessWidget {
     required this.library,
     required this.settings,
     required this.documents,
+    required this.signatures,
     required this.sharer,
     required this.gallery,
     required this.createCamera,
@@ -46,6 +49,7 @@ class DocScanApp extends StatelessWidget {
   final LibraryController library;
   final SettingsController settings;
   final DocumentRepository documents;
+  final SignatureRepository signatures;
   final DocumentSharer sharer;
   final GalleryPicker gallery;
   final ScanCamera Function() createCamera;
@@ -57,6 +61,7 @@ class DocScanApp extends StatelessWidget {
       library: library,
       settings: settings,
       documents: documents,
+      signatures: signatures,
       gallery: gallery,
       createCamera: createCamera,
       sharer: sharer,
@@ -91,6 +96,8 @@ class DocScanApp extends StatelessWidget {
               switch (route.name) {
                 case '/settings':
                   return _route((_) => const SettingsScreen());
+                case '/signatures':
+                  return _route((_) => const SignaturesScreen());
                 case '/folder':
                   return _route(
                     (_) =>
