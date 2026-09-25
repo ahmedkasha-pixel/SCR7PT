@@ -21,6 +21,29 @@ class SettingsScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
+              Text(l10n.theme, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    key: const Key('theme-dark'),
+                    label: Text(l10n.themeDark),
+                    selected: current.appearance == AppAppearance.dark,
+                    onSelected: (_) =>
+                        settings.setAppearance(AppAppearance.dark),
+                  ),
+                  ChoiceChip(
+                    key: const Key('theme-light'),
+                    label: Text(l10n.themeLight),
+                    selected: current.appearance == AppAppearance.light,
+                    onSelected: (_) =>
+                        settings.setAppearance(AppAppearance.light),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
               Text(
                 l10n.language,
                 style: Theme.of(context).textTheme.titleMedium,

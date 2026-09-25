@@ -28,9 +28,10 @@ class FakeGallery implements GalleryPicker {
 }
 
 class FakeScanCamera implements ScanCamera {
-  FakeScanCamera(this.picture);
+  FakeScanCamera(this.picture, {this.preview});
 
   final Uint8List picture;
+  final Uint8List? preview;
   bool flash = false;
 
   @override
@@ -38,8 +39,12 @@ class FakeScanCamera implements ScanCamera {
 
   @override
   Widget buildPreview() {
+    final bytes = preview;
+    if (bytes != null && bytes.isNotEmpty) {
+      return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
+    }
     return const ColoredBox(
-      color: Color(0xFF1B2422),
+      color: Color(0xFF0F172A),
       child: Center(
         child: Icon(
           Icons.document_scanner_outlined,
@@ -91,6 +96,7 @@ Future<TestHarness> createHarness({
   Map<String, Object> preferences = const {},
   List<Uint8List> gallery = const [],
   Uint8List? picture,
+  Uint8List? preview,
 }) async {
   TestWidgetsFlutterBinding.ensureInitialized();
   ensureSqlite();
@@ -116,7 +122,8 @@ Future<TestHarness> createHarness({
       },
     ),
     gallery: FakeGallery(gallery),
-    createCamera: () => FakeScanCamera(picture ?? Uint8List(0)),
+    createCamera: () =>
+        FakeScanCamera(picture ?? Uint8List(0), preview: preview),
   );
   return TestHarness(
     app: app,

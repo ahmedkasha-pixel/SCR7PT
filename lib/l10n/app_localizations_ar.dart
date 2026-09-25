@@ -10,7 +10,10 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appTitle => 'DocScan';
+  String get appTitle => 'SCR7PT';
+
+  @override
+  String get tagline => 'امسح. رتّب. شارك.';
 
   @override
   String get homeTitle => 'المستندات';
@@ -158,7 +161,22 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cameraPermissionBody =>
-      'يحتاج DocScan إلى الكاميرا للمسح. يمكنك مع ذلك استيراد صورة من المعرض.';
+      'يحتاج SCR7PT إلى الكاميرا للمسح. يمكنك مع ذلك استيراد صورة من المعرض.';
+
+  @override
+  String get autoMode => 'تلقائي';
+
+  @override
+  String get manualMode => 'يدوي';
+
+  @override
+  String get theme => 'المظهر';
+
+  @override
+  String get themeDark => 'داكن';
+
+  @override
+  String get themeLight => 'فاتح';
 
   @override
   String get openSettings => 'فتح الإعدادات';

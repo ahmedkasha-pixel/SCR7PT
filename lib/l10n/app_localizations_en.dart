@@ -10,7 +10,10 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'DocScan';
+  String get appTitle => 'SCR7PT';
+
+  @override
+  String get tagline => 'Scan. Organize. Share.';
 
   @override
   String get homeTitle => 'Documents';
@@ -153,7 +156,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cameraPermissionBody =>
-      'DocScan needs the camera to scan. You can still import a photo from the gallery.';
+      'SCR7PT needs the camera to scan. You can still import a photo from the gallery.';
+
+  @override
+  String get autoMode => 'Auto';
+
+  @override
+  String get manualMode => 'Manual';
+
+  @override
+  String get theme => 'Appearance';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
+  String get themeLight => 'Light';
 
   @override
   String get openSettings => 'Open settings';

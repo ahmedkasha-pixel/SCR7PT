@@ -11,6 +11,7 @@ void main() {
     final repository = SettingsRepository();
     expect((await repository.load()).languageCode, isNull);
     expect((await repository.load()).shareFormat, ShareFormat.pdf);
+    expect((await repository.load()).appearance, AppAppearance.dark);
 
     await repository.save(
       const AppSettings(languageCode: 'en', shareFormat: ShareFormat.jpg),
@@ -19,7 +20,11 @@ void main() {
     expect(stored.languageCode, 'en');
     expect(stored.shareFormat, ShareFormat.jpg);
 
+    await repository.save(const AppSettings(appearance: AppAppearance.light));
+    expect((await repository.load()).appearance, AppAppearance.light);
+
     await repository.save(const AppSettings());
     expect((await repository.load()).languageCode, isNull);
+    expect((await repository.load()).appearance, AppAppearance.dark);
   });
 }

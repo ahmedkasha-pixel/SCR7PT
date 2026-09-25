@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
-import '../../core/app_config.dart';
 import '../../data/models/records.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/theme/app_theme.dart';
 import '../../widgets/dialogs.dart';
 import '../../widgets/document_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/share_sheet.dart';
+import '../../widgets/wordmark.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Widget tests preload the library outside the fake async zone.
       // A second refresh here would open SQLite during a pumped frame.
       if (library.loading) library.refresh();
+      Navigator.pushNamed(context, '/scan');
     });
   }
 
@@ -43,14 +45,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final library = AppScope.of(context).library;
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('scan-button'),
-        onPressed: () => _openScan(null),
-        icon: const Icon(Icons.document_scanner_outlined),
-        label: Text(l10n.scan),
-      ),
       body: SafeArea(
+        bottom: false,
         child: ListenableBuilder(
           listenable: library,
           builder: (context, _) {
@@ -79,14 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const Wordmark(size: 26),
+                              const SizedBox(height: 4),
                               Text(
-                                AppConfig.appName,
-                                style: Theme.of(context).textTheme.labelLarge
-                                    ?.copyWith(
-                                      color: scheme.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                l10n.tagline,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: scheme.onSurfaceVariant),
                               ),
+                              const SizedBox(height: 12),
                               Text(
                                 l10n.homeTitle,
                                 style: Theme.of(context)
@@ -96,15 +92,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           ),
-                        ),
-                        IconButton(
-                          key: const Key('settings-button'),
-                          tooltip: l10n.settings,
-                          onPressed: () async {
-                            await Navigator.pushNamed(context, '/settings');
-                            if (context.mounted) await library.refresh();
-                          },
-                          icon: const Icon(Icons.settings_outlined),
                         ),
                       ],
                     ),
@@ -120,6 +107,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: InputDecoration(
                         hintText: l10n.searchHint,
                         prefixIcon: const Icon(Icons.search),
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(999),
+                          ),
+                          borderSide: BorderSide(color: scheme.outline),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                          borderSide: BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
                         suffixIcon: library.searching
                             ? IconButton(
                                 onPressed: () {
@@ -162,11 +165,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                 ],
-                const SliverToBoxAdapter(child: SizedBox(height: 96)),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             );
           },
         ),
+      ),
+      bottomNavigationBar: _ScanBar(
+        onScan: () => _openScan(null),
+        onSettings: () async {
+          await Navigator.pushNamed(context, '/settings');
+          if (context.mounted) await library.refresh();
+        },
       ),
     );
   }
@@ -222,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icons.create_new_folder_outlined,
               title: l10n.newFolder,
               subtitle: '',
-              color: scheme.surfaceContainerHighest,
+              color: scheme.surface,
               onTap: _createFolder,
             );
           }
@@ -232,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.folder_outlined,
             title: folder.name,
             subtitle: l10n.documentsCount(folder.documentCount),
-            color: scheme.primaryContainer,
+            color: scheme.surface,
             onTap: () async {
               await Navigator.pushNamed(context, '/folder', arguments: folder);
               if (context.mounted) await library.refresh();
@@ -384,9 +394,9 @@ class _FolderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: color,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         onLongPress: onLongPress,
         child: SizedBox(
@@ -414,6 +424,114 @@ class _FolderCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScanBar extends StatelessWidget {
+  const _ScanBar({required this.onScan, required this.onSettings});
+
+  final VoidCallback onScan;
+  final VoidCallback onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: scheme.outline)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 72,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _BarButton(
+                        icon: Icons.folder_outlined,
+                        label: l10n.homeTitle,
+                        selected: true,
+                        onPressed: () {},
+                      ),
+                    ),
+                    const SizedBox(width: 72),
+                    Expanded(
+                      child: _BarButton(
+                        key: const Key('settings-button'),
+                        icon: Icons.settings_outlined,
+                        label: l10n.settings,
+                        onPressed: onSettings,
+                      ),
+                    ),
+                  ],
+                ),
+                Positioned(
+                  top: -18,
+                  child: SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: FloatingActionButton(
+                      key: const Key('scan-button'),
+                      elevation: 2,
+                      onPressed: onScan,
+                      child: const Icon(Icons.document_scanner_outlined),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BarButton extends StatelessWidget {
+  const _BarButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = selected ? scheme.primary : scheme.onSurfaceVariant;
+    return InkWell(
+      onTap: onPressed,
+      child: SizedBox(
+        height: 44,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

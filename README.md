@@ -1,6 +1,6 @@
-# DocScan
+# SCR7PT
 
-DocScan is a Phase 1 document scanner for Android and iOS. One Flutter codebase captures pages, straightens them, files them in folders, and shares a PDF or JPEG through the system share sheet. Everything stays on the device. There is no account and no server.
+SCR7PT is a Phase 1 document scanner for Android and iOS. Dark Tech is the default theme (a light theme is in Settings). The wordmark stays left-to-right. One Flutter codebase captures pages, straightens them, files them in folders, and shares a PDF or JPEG through the system share sheet. Everything stays on the device. There is no account and no server.
 
 The in-app name lives in `lib/core/app_config.dart` (`AppConfig.appName`). The launcher label is set separately in `android/app/src/main/AndroidManifest.xml` (`android:label`) and `ios/Runner/Info.plist` (`CFBundleDisplayName`).
 

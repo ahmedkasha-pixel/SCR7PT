@@ -25,7 +25,7 @@ Future<void> shareDocument(
     context: context,
     showDragHandle: true,
     builder: (context) =>
-        _ShareSheet(initial: scope.settings.settings.shareFormat),
+        ShareFormatSheet(initial: scope.settings.settings.shareFormat),
   );
   if (format == null || !context.mounted) return;
 
@@ -47,16 +47,16 @@ Future<void> shareDocument(
   }
 }
 
-class _ShareSheet extends StatefulWidget {
-  const _ShareSheet({required this.initial});
+class ShareFormatSheet extends StatefulWidget {
+  const ShareFormatSheet({super.key, required this.initial});
 
   final ShareFormat initial;
 
   @override
-  State<_ShareSheet> createState() => _ShareSheetState();
+  State<ShareFormatSheet> createState() => _ShareFormatSheetState();
 }
 
-class _ShareSheetState extends State<_ShareSheet> {
+class _ShareFormatSheetState extends State<ShareFormatSheet> {
   late ShareFormat _format = widget.initial;
 
   @override

@@ -28,6 +28,8 @@ class _ScanFlowState extends State<ScanFlow> {
   ScanCameraStatus? _status;
   bool _editing = false;
   bool _flash = false;
+  bool _manual = false;
+  bool _forcePop = false;
 
   @override
   void initState() {
@@ -72,7 +74,7 @@ class _ScanFlowState extends State<ScanFlow> {
     if (camera == null) return;
     try {
       final bytes = await camera.takePicture();
-      await _session.addBytes(bytes);
+      await _session.addBytes(bytes, manual: _manual);
       if (!mounted) return;
       await _camera?.dispose();
       setState(() {
@@ -94,7 +96,7 @@ class _ScanFlowState extends State<ScanFlow> {
       final images = await AppScope.of(context).gallery.pickImages();
       if (images.isEmpty || !mounted) return;
       for (final bytes in images) {
-        await _session.addBytes(bytes);
+        await _session.addBytes(bytes, manual: _manual);
       }
       if (!mounted) return;
       await _camera?.dispose();
@@ -241,7 +243,7 @@ class _ScanFlowState extends State<ScanFlow> {
 
   Future<void> _maybeLeave() async {
     if (_session.pages.isEmpty) {
-      Navigator.pop(context);
+      _leave();
       return;
     }
     final l10n = AppLocalizations.of(context);
@@ -251,13 +253,20 @@ class _ScanFlowState extends State<ScanFlow> {
       message: l10n.discardScanBody,
       confirm: l10n.discard,
     );
-    if (discard && mounted) Navigator.pop(context);
+    if (discard && mounted) _leave();
+  }
+
+  void _leave() {
+    setState(() => _forcePop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.pop(context);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _forcePop,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _maybeLeave();
       },
@@ -267,10 +276,14 @@ class _ScanFlowState extends State<ScanFlow> {
               camera: _camera,
               status: _status,
               flashOn: _flash,
+              manual: _manual,
+              pageCount: _session.pages.length,
               onCapture: _capture,
               onGallery: _import,
               onFlash: _toggleFlash,
               onRetry: _openCamera,
+              onClose: _maybeLeave,
+              onManualChanged: (manual) => setState(() => _manual = manual),
             ),
     );
   }

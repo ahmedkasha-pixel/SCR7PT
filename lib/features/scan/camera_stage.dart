@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/wordmark.dart';
 import 'scan_camera.dart';
 
 class CameraStage extends StatelessWidget {
@@ -10,72 +12,69 @@ class CameraStage extends StatelessWidget {
     required this.camera,
     required this.status,
     required this.flashOn,
+    required this.manual,
+    required this.pageCount,
     required this.onCapture,
     required this.onGallery,
     required this.onFlash,
     required this.onRetry,
+    required this.onClose,
+    required this.onManualChanged,
   });
 
   final ScanCamera? camera;
   final ScanCameraStatus? status;
   final bool flashOn;
+  final bool manual;
+  final int pageCount;
   final VoidCallback onCapture;
   final VoidCallback onGallery;
   final VoidCallback onFlash;
   final VoidCallback onRetry;
+  final VoidCallback onClose;
+  final ValueChanged<bool> onManualChanged;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final ready = status == ScanCameraStatus.ready && camera != null;
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(l10n.cameraTitle),
-      ),
-      body: Column(
+      backgroundColor: AppColors.background,
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (ready)
-                  camera!.buildPreview()
-                else
-                  _Message(
-                    status: status,
-                    onGallery: onGallery,
-                    onRetry: onRetry,
-                  ),
-                if (ready)
-                  IgnorePointer(
-                    child: Center(
-                      child: Container(
-                        margin: const EdgeInsets.all(28),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white70, width: 2),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+          if (ready)
+            camera!.buildPreview()
+          else
+            _Message(status: status, onGallery: onGallery, onRetry: onRetry),
+          const IgnorePointer(child: _CropFrame()),
           SafeArea(
-            top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
               child: Column(
                 children: [
-                  Text(
-                    l10n.scanHint,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70),
+                  Row(
+                    children: [
+                      TextButton(
+                        key: const Key('camera-close'),
+                        onPressed: onClose,
+                        child: Text(
+                          l10n.cancel,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      const Wordmark(size: 18, color: Colors.white),
+                      const Spacer(),
+                      _CountPill(count: pageCount),
+                    ],
                   ),
-                  const SizedBox(height: 14),
+                  const Spacer(),
+                  _ModeSwitch(manual: manual, onChanged: onManualChanged),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -106,6 +105,161 @@ class CameraStage extends StatelessWidget {
   }
 }
 
+class _CountPill extends StatelessWidget {
+  const _CountPill({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      key: const Key('page-counter'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xCC0F172A),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        l10n.pagesCount(count),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeSwitch extends StatelessWidget {
+  const _ModeSwitch({required this.manual, required this.onChanged});
+
+  final bool manual;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xCC0F172A),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ModeChip(
+            key: const Key('mode-auto'),
+            label: l10n.autoMode,
+            selected: !manual,
+            onTap: () => onChanged(false),
+          ),
+          _ModeChip(
+            key: const Key('mode-manual'),
+            label: l10n.manualMode,
+            selected: manual,
+            onTap: () => onChanged(true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Material(
+        color: selected ? AppColors.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 72, minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CropFrame extends StatelessWidget {
+  const _CropFrame();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: FractionallySizedBox(
+        widthFactor: 0.78,
+        heightFactor: 0.62,
+        child: CustomPaint(painter: _BracketPainter()),
+      ),
+    );
+  }
+}
+
+class _BracketPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.square;
+    const arm = 28.0;
+    final corners = <Offset>[
+      Offset.zero,
+      Offset(size.width, 0),
+      Offset(size.width, size.height),
+      Offset(0, size.height),
+    ];
+    final signs = <Offset>[
+      const Offset(1, 1),
+      const Offset(-1, 1),
+      const Offset(-1, -1),
+      const Offset(1, -1),
+    ];
+    for (var i = 0; i < 4; i++) {
+      final origin = corners[i];
+      final sign = signs[i];
+      canvas.drawLine(origin, origin + Offset(arm * sign.dx, 0), paint);
+      canvas.drawLine(origin, origin + Offset(0, arm * sign.dy), paint);
+      canvas.drawCircle(origin, 6, Paint()..color = AppColors.primary);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _Message extends StatelessWidget {
   const _Message({
     required this.status,
@@ -123,14 +277,15 @@ class _Message extends StatelessWidget {
     final denied = status == ScanCameraStatus.denied;
     final waiting = status == null;
     return ColoredBox(
-      color: const Color(0xFF111111),
+      color: AppColors.background,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (waiting) const CircularProgressIndicator(color: Colors.white),
+              if (waiting)
+                const CircularProgressIndicator(color: AppColors.primary),
               if (!waiting)
                 Icon(
                   denied
@@ -177,15 +332,30 @@ class _Shutter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton.filled(
-      onPressed: onPressed,
-      iconSize: 36,
-      style: IconButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        minimumSize: const Size(76, 76),
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: Container(
+          width: 76,
+          height: 76,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 4),
+          ),
+          child: Container(
+            width: 58,
+            height: 58,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+          ),
+        ),
       ),
-      icon: const Icon(Icons.camera),
     );
   }
 }
@@ -206,7 +376,20 @@ class _RoundAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        IconButton(onPressed: onPressed, color: Colors.white, icon: Icon(icon)),
+        Material(
+          color: const Color(0xCC0F172A),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onPressed,
+            child: SizedBox(
+              width: 52,
+              height: 52,
+              child: Icon(icon, color: Colors.white),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
         Text(
           label,
           style: const TextStyle(color: Colors.white70, fontSize: 12),

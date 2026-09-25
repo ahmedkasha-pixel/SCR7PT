@@ -5,11 +5,9 @@ import 'package:docscan/core/geometry/quad.dart';
 import 'package:docscan/core/theme/app_theme.dart';
 import 'package:docscan/data/models/records.dart';
 import 'package:docscan/features/document/document_screen.dart';
-import 'package:docscan/features/folder/folder_screen.dart';
 import 'package:docscan/features/scan/page_editor.dart';
-import 'package:docscan/features/scan/scan_flow.dart';
 import 'package:docscan/features/scan/scan_session.dart';
-import 'package:docscan/features/settings/settings_screen.dart';
+import 'package:docscan/widgets/share_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -19,55 +17,76 @@ import 'package:image/image.dart' as img;
 import 'support/fakes.dart';
 
 void main() {
-  testWidgets('writes screenshots of the main screens', (tester) async {
+  testWidgets('writes Dark Tech screenshots', (tester) async {
     tester.view.physicalSize = const Size(780, 1688);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.runAsync(_loadFonts);
 
-    final empty = (await tester.runAsync(
-      () => createHarness(preferences: const {'language_code': 'ar'}),
-    ))!;
-    addTearDown(empty.dispose);
-    await tester.runAsync(() => empty.library.refresh());
-    await tester.pumpWidget(_frame(empty.app, 'empty'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('empty-home')), findsOneWidget);
-    await _save(tester, 'home-empty-ar');
-
+    final page = _samplePage();
+    final preview = Uint8List.fromList(page.processedJpeg);
     final harness = (await tester.runAsync(
-      () => createHarness(preferences: const {'language_code': 'ar'}),
+      () => createHarness(
+        preferences: const {'language_code': 'ar'},
+        preview: preview,
+        picture: preview,
+      ),
     ))!;
     addTearDown(harness.dispose);
-    late FolderRecord work;
+
     late DocumentRecord contract;
     late List<PageRecord> pages;
     await tester.runAsync(() async {
-      final created = await harness.documents.createFolder('عمل');
+      final work = await harness.documents.createFolder('عمل');
       await harness.documents.createFolder('فواتير');
       contract = await harness.documents.createDocument(
         name: 'عقد الإيجار',
-        folderId: created.id,
-        pages: [_samplePage()],
-      );
-      work = (await harness.documents.listFolders()).firstWhere(
-        (folder) => folder.id == created.id,
+        folderId: work.id,
+        pages: [page],
       );
       pages = await harness.documents.pagesFor(contract.id);
       await harness.library.refresh();
     });
-    await tester.pumpWidget(_frame(harness.app, 'filled'));
-    await tester.pumpAndSettle();
-    expect(find.text('عقد الإيجار'), findsOneWidget);
-    expect(find.text('عمل'), findsWidgets);
-    await _save(tester, 'home-ar');
 
-    _push(tester, FolderScreen(folder: work, initialDocuments: [contract]));
+    await tester.pumpWidget(
+      RepaintBoundary(key: const Key('shot'), child: harness.app),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('عمل'), findsWidgets);
+    expect(find.byKey(const Key('shutter-button')), findsOneWidget);
+    await _save(tester, 'camera-ar');
+
+    await tester.tap(find.byKey(const Key('camera-close')));
+    await tester.pumpAndSettle();
     expect(find.text('عقد الإيجار'), findsOneWidget);
-    await _save(tester, 'folder-ar');
+    await _save(tester, 'home-dark-ar');
+
+    _push(
+      tester,
+      PageEditor(
+        session: _session(preview, cropping: true),
+        onAddPage: () {},
+        onDone: () async {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('معاينة'), findsOneWidget);
+    await _save(tester, 'crop-ar');
+    _pop(tester);
+    await tester.pumpAndSettle();
+
+    _push(
+      tester,
+      PageEditor(
+        session: _session(preview, cropping: false),
+        onAddPage: () {},
+        onDone: () async {},
+        showAdd: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('الأصل'), findsOneWidget);
+    await _save(tester, 'filters-ar');
     _pop(tester);
     await tester.pumpAndSettle();
 
@@ -75,38 +94,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('عقد الإيجار'), findsOneWidget);
     await _save(tester, 'document-ar');
-    _pop(tester);
-    await tester.pumpAndSettle();
 
-    _push(tester, const SettingsScreen());
-    await tester.pumpAndSettle();
-    expect(find.text('الإعدادات'), findsOneWidget);
-    await _save(tester, 'settings-ar');
-    _pop(tester);
-    await tester.pumpAndSettle();
-
-    _push(tester, const ScanFlow());
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('shutter-button')), findsOneWidget);
-    await _save(tester, 'camera-ar');
-    _pop(tester);
-    await tester.pumpAndSettle();
-
-    _push(
-      tester,
-      PageEditor(session: _session(), onAddPage: () {}, onDone: () async {}),
+    final sheetContext = tester.element(find.byType(DocumentScreen));
+    showModalBottomSheet<void>(
+      context: sheetContext,
+      builder: (_) => const ShareFormatSheet(initial: ShareFormat.pdf),
     );
     await tester.pumpAndSettle();
-    expect(find.text('معاينة'), findsOneWidget);
-    await _save(tester, 'editor-ar');
-  });
-}
+    expect(find.text('PDF'), findsOneWidget);
+    await _save(tester, 'share-ar');
+    _pop(tester);
+    await tester.pumpAndSettle();
+    _pop(tester);
+    await tester.pumpAndSettle();
 
-Widget _frame(Widget child, String id) {
-  return RepaintBoundary(
-    key: const Key('shot'),
-    child: KeyedSubtree(key: ValueKey(id), child: child),
-  );
+    await tester.tap(find.byKey(const Key('settings-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('الإعدادات'), findsOneWidget);
+    expect(find.text('داكن'), findsOneWidget);
+    await _save(tester, 'settings-ar');
+
+    await tester.tap(find.byKey(const Key('theme-light')));
+    await tester.pumpAndSettle();
+    _pop(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('عقد الإيجار'), findsOneWidget);
+    await _save(tester, 'home-light-ar');
+  });
 }
 
 void _push(WidgetTester tester, Widget page) {
@@ -122,7 +136,7 @@ void _pop(WidgetTester tester) {
 Future<void> _save(WidgetTester tester, String name) async {
   await tester.pump();
   await tester.runAsync(
-    () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    () => Future<void>.delayed(const Duration(milliseconds: 80)),
   );
   await tester.pump();
   final boundary = tester.renderObject<RenderRepaintBoundary>(
@@ -141,13 +155,33 @@ Future<void> _save(WidgetTester tester, String name) async {
 }
 
 Future<void> _loadFonts() async {
-  final loader = FontLoader(AppTheme.fontFamily);
+  final arabic = FontLoader(AppTheme.arabicFamily);
   for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-    final bytes = await File('assets/fonts/IBMPlexSansArabic-$weight.ttf')
-        .readAsBytes();
-    loader.addFont(Future.value(ByteData.sublistView(bytes)));
+    arabic.addFont(_bytes('assets/fonts/IBMPlexSansArabic-$weight.ttf'));
   }
-  await loader.load();
+  await arabic.load();
+
+  final inter = FontLoader(AppTheme.latinFamily);
+  for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']) {
+    inter.addFont(_bytes('assets/fonts/Inter-$weight.ttf'));
+  }
+  await inter.load();
+
+  final icons = FontLoader('MaterialIcons');
+  final flutterRoot =
+      Platform.environment['FLUTTER_ROOT'] ??
+      '${Platform.environment['HOME']}/develop/flutter';
+  icons.addFont(
+    _bytes(
+      '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+    ),
+  );
+  await icons.load();
+}
+
+Future<ByteData> _bytes(String path) async {
+  final data = await File(path).readAsBytes();
+  return ByteData.sublistView(data);
 }
 
 NewPage _samplePage() {
@@ -162,9 +196,7 @@ NewPage _samplePage() {
   );
 }
 
-ScanSession _session() {
-  final image = _pageImage();
-  final jpeg = Uint8List.fromList(img.encodeJpg(image, quality: 85));
+ScanSession _session(Uint8List jpeg, {required bool cropping}) {
   final session = ScanSession();
   session.pages.add(
     EditablePage(
@@ -172,8 +204,9 @@ ScanSession _session() {
       originalJpeg: jpeg,
       previewJpeg: jpeg,
       corners: Quad.standard,
-      width: image.width,
-      height: image.height,
+      width: 480,
+      height: 680,
+      cropping: cropping,
     ),
   );
   return session;
@@ -181,31 +214,31 @@ ScanSession _session() {
 
 img.Image _pageImage() {
   final image = img.Image(width: 480, height: 680, numChannels: 3);
-  img.fill(image, color: img.ColorRgb8(28, 36, 34));
+  img.fill(image, color: img.ColorRgb8(55, 48, 42));
   img.fillRect(
     image,
-    x1: 36,
-    y1: 28,
-    x2: 444,
-    y2: 652,
-    color: img.ColorRgb8(248, 246, 240),
+    x1: 46,
+    y1: 36,
+    x2: 434,
+    y2: 640,
+    color: img.ColorRgb8(244, 242, 236),
   );
   img.fillRect(
     image,
-    x1: 70,
-    y1: 70,
-    x2: 300,
+    x1: 78,
+    y1: 72,
+    x2: 280,
     y2: 96,
-    color: img.ColorRgb8(15, 106, 100),
+    color: img.ColorRgb8(37, 99, 235),
   );
-  for (var line = 0; line < 8; line++) {
+  for (var line = 0; line < 10; line++) {
     img.fillRect(
       image,
-      x1: 70,
-      y1: 130 + line * 36,
-      x2: 400,
-      y2: 146 + line * 36,
-      color: img.ColorRgb8(190, 186, 176),
+      x1: 78,
+      y1: 124 + line * 34,
+      x2: line.isEven ? 390 : 320,
+      y2: 138 + line * 34,
+      color: img.ColorRgb8(170, 166, 158),
     );
   }
   return image;

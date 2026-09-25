@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../core/geometry/quad.dart';
+import '../core/theme/app_theme.dart';
 
 class CropOverlay extends StatelessWidget {
   const CropOverlay({
@@ -22,7 +23,6 @@ class CropOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
         final box = Size(constraints.maxWidth, constraints.maxHeight);
@@ -66,10 +66,10 @@ class CropOverlay extends StatelessWidget {
             ),
             for (final corner in CropCorner.values)
               Positioned(
-                left: toScreen(quad.point(corner)).dx - 18,
-                top: toScreen(quad.point(corner)).dy - 18,
-                width: 36,
-                height: 36,
+                left: toScreen(quad.point(corner)).dx - 22,
+                top: toScreen(quad.point(corner)).dy - 22,
+                width: 44,
+                height: 44,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onPanUpdate: (details) {
@@ -77,11 +77,14 @@ class CropOverlay extends StatelessWidget {
                     final local = render.globalToLocal(details.globalPosition);
                     onChanged(corner, toNorm(local));
                   },
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: scheme.primary,
-                      border: Border.all(color: Colors.white, width: 3),
+                  child: Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary,
+                        border: Border.all(color: Colors.white, width: 3),
+                      ),
+                      child: const SizedBox(width: 22, height: 22),
                     ),
                   ),
                 ),
@@ -122,7 +125,7 @@ class _QuadPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
-        ..color = Colors.white,
+        ..color = AppColors.primary,
     );
   }
 

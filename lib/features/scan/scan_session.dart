@@ -41,7 +41,7 @@ class ScanSession extends ChangeNotifier {
   EditablePage? get current =>
       pages.isEmpty ? null : pages[index.clamp(0, pages.length - 1)];
 
-  Future<void> addBytes(Uint8List bytes) async {
+  Future<void> addBytes(Uint8List bytes, {bool manual = false}) async {
     if (pages.length >= AppConfig.maxPagesPerDocument) {
       throw StateError('page-limit');
     }
@@ -52,7 +52,7 @@ class ScanSession extends ChangeNotifier {
           id: '${DateTime.now().microsecondsSinceEpoch}_${_ids++}',
           originalJpeg: prepared.originalJpeg,
           previewJpeg: prepared.previewJpeg,
-          corners: Quad.fromList(prepared.corners),
+          corners: manual ? Quad.standard : Quad.fromList(prepared.corners),
           width: prepared.width,
           height: prepared.height,
         ),

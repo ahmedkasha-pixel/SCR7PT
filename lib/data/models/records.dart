@@ -4,6 +4,9 @@ enum PageFilter { original, grayscale, blackAndWhite, brighten }
 
 enum ShareFormat { pdf, jpg }
 
+/// Dark is the product default. Light is an explicit settings choice.
+enum AppAppearance { dark, light }
+
 class FolderRecord {
   const FolderRecord({
     required this.id,
@@ -79,20 +82,27 @@ class NewPage {
 }
 
 class AppSettings {
-  const AppSettings({this.languageCode, this.shareFormat = ShareFormat.pdf});
+  const AppSettings({
+    this.languageCode,
+    this.shareFormat = ShareFormat.pdf,
+    this.appearance = AppAppearance.dark,
+  });
 
   /// `null` follows the device language, falling back to Arabic.
   final String? languageCode;
   final ShareFormat shareFormat;
+  final AppAppearance appearance;
 
   AppSettings copyWith({
     String? languageCode,
     bool clearLanguage = false,
     ShareFormat? shareFormat,
+    AppAppearance? appearance,
   }) {
     return AppSettings(
       languageCode: clearLanguage ? null : (languageCode ?? this.languageCode),
       shareFormat: shareFormat ?? this.shareFormat,
+      appearance: appearance ?? this.appearance,
     );
   }
 }

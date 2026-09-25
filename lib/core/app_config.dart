@@ -4,7 +4,7 @@
 /// - android/app/src/main/AndroidManifest.xml (`android:label`)
 /// - ios/Runner/Info.plist (`CFBundleDisplayName`)
 class AppConfig {
-  static const String appName = 'DocScan';
+  static const String appName = 'SCR7PT';
 
   /// Longest edge kept for stored page images. Enough for a readable page
   /// without holding multi-megapixel photos in memory.

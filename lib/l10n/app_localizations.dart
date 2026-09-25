@@ -101,8 +101,14 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'DocScan'**
+  /// **'SCR7PT'**
   String get appTitle;
+
+  /// No description provided for @tagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan. Organize. Share.'**
+  String get tagline;
 
   /// No description provided for @homeTitle.
   ///
@@ -341,8 +347,38 @@ abstract class AppLocalizations {
   /// No description provided for @cameraPermissionBody.
   ///
   /// In en, this message translates to:
-  /// **'DocScan needs the camera to scan. You can still import a photo from the gallery.'**
+  /// **'SCR7PT needs the camera to scan. You can still import a photo from the gallery.'**
   String get cameraPermissionBody;
+
+  /// No description provided for @autoMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get autoMode;
+
+  /// No description provided for @manualMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get manualMode;
+
+  /// No description provided for @theme.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get theme;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeDark;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeLight;
 
   /// No description provided for @openSettings.
   ///

@@ -19,6 +19,18 @@ import 'features/share/document_sharer.dart';
 import 'features/upcoming/upcoming_services.dart';
 import 'l10n/app_localizations.dart';
 
+class AppRoute<T> extends MaterialPageRoute<T> {
+  AppRoute({required super.builder});
+
+  @override
+  Duration get transitionDuration => AppMotion.standard;
+
+  @override
+  Duration get reverseTransitionDuration => AppMotion.fast;
+}
+
+Route<void> _route(WidgetBuilder builder) => AppRoute<void>(builder: builder);
+
 class DocScanApp extends StatelessWidget {
   const DocScanApp({
     super.key,
@@ -57,6 +69,7 @@ class DocScanApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
+            themeMode: settings.themeMode,
             locale: settings.locale,
             supportedLocales: AppLocalizations.supportedLocales,
             localizationsDelegates: const [
@@ -77,22 +90,19 @@ class DocScanApp extends StatelessWidget {
             onGenerateRoute: (route) {
               switch (route.name) {
                 case '/settings':
-                  return MaterialPageRoute<void>(
-                    builder: (_) => const SettingsScreen(),
-                  );
+                  return _route((_) => const SettingsScreen());
                 case '/folder':
-                  return MaterialPageRoute<void>(
-                    builder: (_) =>
+                  return _route(
+                    (_) =>
                         FolderScreen(folder: route.arguments! as FolderRecord),
                   );
                 case '/scan':
-                  return MaterialPageRoute<void>(
-                    builder: (_) =>
-                        ScanFlow(folderId: route.arguments as String?),
+                  return _route(
+                    (_) => ScanFlow(folderId: route.arguments as String?),
                   );
                 case '/document':
-                  return MaterialPageRoute<void>(
-                    builder: (_) => DocumentScreen(
+                  return _route(
+                    (_) => DocumentScreen(
                       document: route.arguments! as DocumentRecord,
                     ),
                   );

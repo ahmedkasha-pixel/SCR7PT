@@ -33,15 +33,28 @@ Future<TestHarness> _boot(
   return harness;
 }
 
+Future<void> _leaveCamera(WidgetTester tester) async {
+  await _settle(tester);
+  await tester.tap(find.byKey(const Key('camera-close')));
+  await _settle(tester);
+}
+
 void main() {
   testWidgets(
     'home is Arabic and right-to-left by default for an Arabic device',
     (tester) async {
       await _boot(tester, preferences: const {'language_code': 'ar'});
       await _settle(tester);
+      expect(find.byKey(const Key('shutter-button')), findsOneWidget);
+      expect(find.text('SCR7PT'), findsWidgets);
+      expect(
+        Directionality.of(tester.element(find.byType(Scaffold).first)),
+        TextDirection.rtl,
+      );
 
-      expect(find.text('المستندات'), findsOneWidget);
-      expect(find.text('مسح'), findsOneWidget);
+      await _leaveCamera(tester);
+      expect(find.text('المستندات'), findsWidgets);
+      expect(find.text('امسح. رتّب. شارك.'), findsOneWidget);
       expect(find.byKey(const Key('empty-home')), findsOneWidget);
       expect(
         Directionality.of(tester.element(find.byType(Scaffold).first)),
@@ -66,9 +79,9 @@ void main() {
         );
       },
     );
-    await _settle(tester);
+    await _leaveCamera(tester);
 
-    expect(find.text('Documents'), findsOneWidget);
+    expect(find.text('Documents'), findsWidgets);
     expect(find.text('Work'), findsOneWidget);
     expect(find.text('Lease contract'), findsOneWidget);
 
@@ -89,7 +102,7 @@ void main() {
       tester,
       preferences: const {'language_code': 'ar'},
     );
-    await _settle(tester);
+    await _leaveCamera(tester);
 
     await tester.tap(find.byKey(const Key('settings-button')));
     await _settle(tester);

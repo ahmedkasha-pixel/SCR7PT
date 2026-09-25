@@ -12,7 +12,7 @@
 		<string>en</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>DocScan</string>
+	<string>SCR7PT</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -20,11 +20,11 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>DocScan</string>
+	<string>SCR7PT</string>
 	<key>NSCameraUsageDescription</key>
-	<string>يحتاج DocScan إلى الكاميرا لمسح المستندات.</string>
+	<string>يحتاج SCR7PT إلى الكاميرا لمسح المستندات.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>يحتاج DocScan إلى الصور لاستيراد صور المستندات.</string>
+	<string>يحتاج SCR7PT إلى الصور لاستيراد صور المستندات.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

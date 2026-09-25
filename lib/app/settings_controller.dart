@@ -15,6 +15,10 @@ class SettingsController extends ChangeNotifier {
     return Locale(code);
   }
 
+  ThemeMode get themeMode => settings.appearance == AppAppearance.light
+      ? ThemeMode.light
+      : ThemeMode.dark;
+
   Future<void> load() async {
     settings = await _repository.load();
     notifyListeners();
@@ -31,6 +35,12 @@ class SettingsController extends ChangeNotifier {
 
   Future<void> setShareFormat(ShareFormat format) async {
     settings = settings.copyWith(shareFormat: format);
+    await _repository.save(settings);
+    notifyListeners();
+  }
+
+  Future<void> setAppearance(AppAppearance appearance) async {
+    settings = settings.copyWith(appearance: appearance);
     await _repository.save(settings);
     notifyListeners();
   }
