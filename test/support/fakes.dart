@@ -1,0 +1,129 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:docscan/app.dart';
+import 'package:docscan/app/library_controller.dart';
+import 'package:docscan/app/settings_controller.dart';
+import 'package:docscan/data/db/app_database.dart';
+import 'package:docscan/data/repositories/document_repository.dart';
+import 'package:docscan/data/repositories/settings_repository.dart';
+import 'package:docscan/data/storage/file_store.dart';
+import 'package:docscan/features/scan/gallery_picker.dart';
+import 'package:docscan/features/scan/scan_camera.dart';
+import 'package:docscan/features/share/document_sharer.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'sqlite_setup.dart';
+
+class FakeGallery implements GalleryPicker {
+  FakeGallery(this.images);
+
+  final List<Uint8List> images;
+
+  @override
+  Future<List<Uint8List>> pickImages() async => images;
+}
+
+class FakeScanCamera implements ScanCamera {
+  FakeScanCamera(this.picture);
+
+  final Uint8List picture;
+  bool flash = false;
+
+  @override
+  Future<ScanCameraStatus> initialize() async => ScanCameraStatus.ready;
+
+  @override
+  Widget buildPreview() {
+    return const ColoredBox(
+      color: Color(0xFF1B2422),
+      child: Center(
+        child: Icon(
+          Icons.document_scanner_outlined,
+          color: Colors.white,
+          size: 72,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<Uint8List> takePicture() async => picture;
+
+  @override
+  Future<void> setFlash(bool enabled) async {
+    flash = enabled;
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+class TestHarness {
+  TestHarness({
+    required this.app,
+    required this.documents,
+    required this.library,
+    required this.directory,
+    required this.shared,
+    required this.files,
+  });
+
+  final DocScanApp app;
+  final DocumentRepository documents;
+  final LibraryController library;
+  final Directory directory;
+  final List<ShareParams> shared;
+  final FileStore files;
+
+  Future<void> dispose() async {
+    await documents.close();
+    if (await directory.exists()) {
+      await directory.delete(recursive: true);
+    }
+  }
+}
+
+Future<TestHarness> createHarness({
+  Map<String, Object> preferences = const {},
+  List<Uint8List> gallery = const [],
+  Uint8List? picture,
+}) async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  ensureSqlite();
+  SharedPreferences.setMockInitialValues(preferences);
+  final directory = await Directory.systemTemp.createTemp('docscan_ui_');
+  final files = FileStore(Directory('${directory.path}/files'));
+  final documents = DocumentRepository(
+    database: AppDatabase(path: '${directory.path}/db.sqlite'),
+    files: files,
+  );
+  final settings = SettingsController(SettingsRepository());
+  await settings.load();
+  final library = LibraryController(documents);
+  final shared = <ShareParams>[];
+  final app = DocScanApp(
+    library: library,
+    settings: settings,
+    documents: documents,
+    sharer: DocumentSharer(
+      files: files,
+      share: (params) async {
+        shared.add(params);
+      },
+    ),
+    gallery: FakeGallery(gallery),
+    createCamera: () => FakeScanCamera(picture ?? Uint8List(0)),
+  );
+  return TestHarness(
+    app: app,
+    documents: documents,
+    library: library,
+    directory: directory,
+    shared: shared,
+    files: files,
+  );
+}

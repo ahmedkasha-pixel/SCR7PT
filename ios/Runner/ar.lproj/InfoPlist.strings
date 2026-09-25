@@ -1,0 +1,3 @@
+NSCameraUsageDescription = "يحتاج DocScan إلى الكاميرا لمسح المستندات.";
+NSPhotoLibraryUsageDescription = "يحتاج DocScan إلى الصور لاستيراد صور المستندات.";
+CFBundleDisplayName = "DocScan";

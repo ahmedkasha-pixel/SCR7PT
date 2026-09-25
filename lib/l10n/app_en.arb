@@ -1,0 +1,123 @@
+{
+  "@@locale": "en",
+  "appTitle": "DocScan",
+  "homeTitle": "Documents",
+  "folders": "Folders",
+  "recent": "Recent",
+  "searchHint": "Search by name",
+  "searchResults": "Search results",
+  "noSearchResults": "No documents with that name",
+  "emptyHomeTitle": "No documents yet",
+  "emptyHomeBody": "Scan a page or import a photo. Files stay on this device.",
+  "emptyFolderTitle": "This folder is empty",
+  "emptyFolderBody": "Scan a document into this folder, or move one here.",
+  "scan": "Scan",
+  "newFolder": "New folder",
+  "folderName": "Folder name",
+  "create": "Create",
+  "cancel": "Cancel",
+  "save": "Save",
+  "rename": "Rename",
+  "delete": "Delete",
+  "move": "Move",
+  "share": "Share",
+  "close": "Close",
+  "retry": "Try again",
+  "deleteFolderTitle": "Delete this folder?",
+  "deleteFolderBody": "The folder and the documents inside it will be removed from this device.",
+  "deleteDocumentTitle": "Delete this document?",
+  "deleteDocumentBody": "The document and its pages will be removed from this device.",
+  "renameFolder": "Rename folder",
+  "renameDocument": "Rename document",
+  "documentName": "Document name",
+  "nameRequired": "Enter a name",
+  "moveDocument": "Move to a folder",
+  "noFolder": "No folder",
+  "pagesCount": "{count, plural, =0{No pages} =1{1 page} other{{count} pages}}",
+  "@pagesCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "documentsCount": "{count, plural, =0{Empty} =1{1 document} other{{count} documents}}",
+  "@documentsCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "cameraTitle": "Scan",
+  "gallery": "Gallery",
+  "flash": "Flash",
+  "scanHint": "Place the page in the frame, then capture.",
+  "cameraUnavailableTitle": "Camera unavailable",
+  "cameraPermissionBody": "DocScan needs the camera to scan. You can still import a photo from the gallery.",
+  "openSettings": "Open settings",
+  "startingCamera": "Starting the camera…",
+  "pagePosition": "Page {current} of {total}",
+  "@pagePosition": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "filterOriginal": "Original",
+  "filterGrayscale": "Grayscale",
+  "filterBlackAndWhite": "Black & white",
+  "filterBrighten": "Brighten",
+  "adjustCrop": "Adjust corners",
+  "preview": "Preview",
+  "addPage": "Add page",
+  "deletePage": "Delete page",
+  "reorderPages": "Reorder",
+  "done": "Done",
+  "processing": "Enhancing the page…",
+  "resetCorners": "Reset corners",
+  "cornersHint": "Drag the corners onto the edges of the page.",
+  "saveDocument": "Save document",
+  "chooseFolder": "Folder",
+  "settings": "Settings",
+  "language": "Language",
+  "languageSystem": "Device language",
+  "languageArabic": "Arabic",
+  "languageEnglish": "English",
+  "defaultShareFormat": "Default share format",
+  "sharePdf": "PDF",
+  "shareJpg": "JPG images",
+  "shareAs": "Share as",
+  "preparingShare": "Preparing the file…",
+  "shareFailed": "Could not share this document",
+  "nothingToShare": "This document has no pages",
+  "upcoming": "Coming next",
+  "phaseLabel": "Phase {phase}",
+  "@phaseLabel": {
+    "placeholders": {
+      "phase": {"type": "int"}
+    }
+  },
+  "compressionTitle": "Compression",
+  "compressionBody": "High, medium, and low quality, with the file size after compression.",
+  "signatureTitle": "Signatures",
+  "signatureBody": "Import a signature from the camera or gallery, remove the paper background, and place it on a page. Drawing with a finger is a later option.",
+  "cloudTitle": "Google Drive",
+  "cloudBody": "Sign in with Google and save documents to Drive. Other clouds can be added later.",
+  "storageNote": "Documents are stored only on this device until you share them.",
+  "loadError": "Could not load documents",
+  "discardScanTitle": "Discard this scan?",
+  "discardScanBody": "The pages you captured will not be saved.",
+  "discard": "Discard",
+  "keepEditing": "Keep editing",
+  "removeOnlyPageTitle": "Remove the only page?",
+  "removeOnlyPageBody": "The scan will be empty and you will return to the camera.",
+  "importFailed": "Could not import that image",
+  "captureFailed": "Could not capture the photo",
+  "couldNotSave": "Could not save the document",
+  "editPage": "Edit page",
+  "comingSoon": "This arrives in a later phase",
+  "pageLimit": "You can add up to {count} pages in one document",
+  "@pageLimit": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "moreActions": "More"
+}
