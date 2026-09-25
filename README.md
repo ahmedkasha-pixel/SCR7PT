@@ -57,13 +57,9 @@ Not used, on purpose:
 
 Edge detection is a heuristic, not a machine-learning model. A flat or low-contrast frame falls back to a slight inset quad the user can drag.
 
-## Phase 3 (not built)
+## Phase 3
 
-Settings still lists Google Drive as upcoming.
-
-Phase 3 — `lib/features/upcoming/cloud_storage.dart`
-
-- `CloudStorage` plus `GoogleDriveStorage`, which throws `UnimplementedError`. Google sign-in and Drive upload are not linked. Another provider can implement the same interface later.
+Google Drive saving is in `lib/features/drive/`. See [Google Drive](#google-drive) for the client IDs, consent screen, and signing key.
 
 ## Run on Android
 

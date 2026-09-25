@@ -7,8 +7,9 @@ gradle-wrapper.jar
 GeneratedPluginRegistrant.java
 .cxx/
 
-# Remember to never publicly share your keystore.
-# See https://flutter.dev/to/reference-keystore
-key.properties
+# Other local keystores stay ignored. This private repo tracks the SCR7PT
+# release key on purpose so the OAuth SHA-1 does not change between builds:
+# key.properties and app/keystore/scr7pt-release.jks
 **/*.keystore
 **/*.jks
+!app/keystore/scr7pt-release.jks
