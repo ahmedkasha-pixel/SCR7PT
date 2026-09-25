@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../core/processing/signature_extract.dart';
 import '../db/app_database.dart';
 import '../models/records.dart';
 import '../storage/file_store.dart';
@@ -36,7 +37,7 @@ class SignatureRepository {
     final now = _clock();
     final id = nextId();
     final path = _files.signaturePath(id);
-    await _files.writeBytes(path, png);
+    await _files.writeBytes(path, tightenSignaturePng(png));
     await db.insert('signatures', {
       'id': id,
       'name': trimmed,

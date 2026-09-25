@@ -94,6 +94,7 @@ void main() {
     expect(find.text('إضافة توقيع'), findsOneWidget);
     await _save(tester, 'signatures-ar');
     _expectPainted('signatures-ar');
+    _expectThumbInk('signatures-ar');
     _pop(tester);
     await tester.pumpAndSettle();
 
@@ -114,9 +115,12 @@ void main() {
     _pop(tester);
     await tester.pumpAndSettle();
 
+    final stored = (await tester.runAsync(
+      () => File(saved.imagePath).readAsBytes(),
+    ))!;
     _push(
       tester,
-      SignaturePlaceScreen(pageJpeg: page, signaturePng: signature),
+      SignaturePlaceScreen(pageJpeg: page, signaturePng: stored),
     );
     await tester.pumpAndSettle();
     expect(find.text('وضع التوقيع'), findsOneWidget);
@@ -124,6 +128,33 @@ void main() {
     await _save(tester, 'signature-place-ar');
     _expectPainted('signature-place-ar');
   });
+}
+
+void _expectThumbInk(String name) {
+  final image = img.decodePng(
+    File('build/screenshots/phase2/$name.png').readAsBytesSync(),
+  )!;
+  final rows = <int>[];
+  for (var y = 0; y < (image.height * 0.75).round(); y++) {
+    var ink = 0;
+    for (var x = 0; x < image.width; x += 2) {
+      final pixel = image.getPixel(x, y);
+      if (pixel.b > pixel.r + 40 && pixel.b > 90 && pixel.r < 90) ink++;
+    }
+    if (ink > 12) rows.add(y);
+  }
+  final bands = <List<int>>[];
+  for (final y in rows) {
+    if (bands.isEmpty || y > bands.last.last + 6) {
+      bands.add([y]);
+    } else {
+      bands.last.add(y);
+    }
+  }
+  expect(bands.length, greaterThanOrEqualTo(2));
+  for (final band in bands.take(2)) {
+    expect(band.length, greaterThan(8), reason: 'signature ink is missing');
+  }
 }
 
 void _expectPainted(String name) {
@@ -178,7 +209,11 @@ Future<void> _save(WidgetTester tester, String name) async {
   }
   await tester.pump();
   await tester.runAsync(
-    () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    () => Future<void>.delayed(const Duration(milliseconds: 250)),
+  );
+  await tester.pump();
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 250)),
   );
   await tester.pump();
   final boundary = tester.renderObject<RenderRepaintBoundary>(

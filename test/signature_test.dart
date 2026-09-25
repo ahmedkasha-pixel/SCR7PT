@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:docscan/core/processing/pdf_exporter.dart';
 import 'package:docscan/core/processing/signature_extract.dart';
@@ -83,6 +84,63 @@ void main() {
       if (decoded.getPixel(x, 150).r < 80) embeddedDark++;
     }
     expect(embeddedDark, inInclusiveRange(60, 110));
+  });
+
+  test('exported signature aspect matches the source within 2 percent', () {
+    final page = img.Image(width: 640, height: 900, numChannels: 3);
+    img.fill(page, color: img.ColorRgb8(248, 246, 240));
+    final mark = img.Image(width: 360, height: 90, numChannels: 4);
+    img.fill(mark, color: img.ColorRgba8(0, 0, 0, 0));
+    img.fillRect(
+      mark,
+      x1: 0,
+      y1: 0,
+      x2: 359,
+      y2: 89,
+      color: img.ColorRgba8(26, 58, 140, 255),
+    );
+    final png = Uint8List.fromList(img.encodePng(mark));
+    final sourceAspect = mark.width / mark.height;
+    final pageAspect = page.width / page.height;
+    const width = 0.46;
+    final height = signatureHeightFraction(
+      width: width,
+      pageAspect: pageAspect,
+      signatureAspect: sourceAspect,
+    );
+    const centerX = 0.62;
+    const centerY = 0.71;
+    final stamped = stampImage(page, [
+      StampPayload(
+        png: png,
+        centerX: centerX,
+        centerY: centerY,
+        width: width,
+        height: height,
+        rotation: 0,
+      ),
+    ]);
+    final bounds = _inkBounds(stamped);
+    final placedAspect = bounds.width / bounds.height;
+    expect((placedAspect - sourceAspect).abs() / sourceAspect, lessThan(0.02));
+    expect((bounds.center.dx / stamped.width - centerX).abs(), lessThan(0.01));
+    expect((bounds.center.dy / stamped.height - centerY).abs(), lessThan(0.01));
+
+    final stretched = stampImage(page, [
+      StampPayload(
+        png: png,
+        centerX: 0.5,
+        centerY: 0.5,
+        width: 0.3,
+        height: 0.5,
+        rotation: 0,
+      ),
+    ]);
+    final forced = _inkBounds(stretched);
+    expect(
+      (forced.width / forced.height - sourceAspect).abs() / sourceAspect,
+      lessThan(0.02),
+    );
   });
 
   test('a blurred ballpoint signature on shadowed paper keeps the ink', () async {
@@ -195,6 +253,30 @@ void _stroke(img.Image image, int x, int y, int width, int height) {
     x2: x + width ~/ 3 + 8,
     y2: y + height,
     color: img.ColorRgb8(16, 16, 18),
+  );
+}
+
+Rect _inkBounds(img.Image image) {
+  var minX = image.width;
+  var minY = image.height;
+  var maxX = -1;
+  var maxY = -1;
+  for (var y = 0; y < image.height; y++) {
+    for (var x = 0; x < image.width; x++) {
+      final pixel = image.getPixel(x, y);
+      if (pixel.b < 100 || pixel.b < pixel.r + 20) continue;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+  expect(maxX, greaterThan(minX));
+  return Rect.fromLTRB(
+    minX.toDouble(),
+    minY.toDouble(),
+    (maxX + 1).toDouble(),
+    (maxY + 1).toDouble(),
   );
 }
 

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
+import '../../core/processing/signature_stamp.dart';
 import '../../l10n/app_localizations.dart';
 
 class PlacementDraft {
@@ -63,10 +64,11 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
     }
   }
 
-  double get _height {
-    if (_pageAspect <= 0 || _sigAspect <= 0) return 0.12;
-    return (_width / _sigAspect / _pageAspect).clamp(0.04, 0.8);
-  }
+  double get _height => signatureHeightFraction(
+    width: _width,
+    pageAspect: _pageAspect,
+    signatureAspect: _sigAspect,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -114,10 +116,7 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
                           },
                           onScaleUpdate: (details) {
                             setState(() {
-                              _width = (_baseWidth * details.scale).clamp(
-                                0.16,
-                                0.9,
-                              );
+                              _width = _clampWidth(_baseWidth * details.scale);
                               _rotation = _baseRotation + details.rotation;
                               _centerX = (_centerX +
                                       details.focalPointDelta.dx / box.width)
@@ -138,7 +137,7 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
                               ),
                               child: Image.memory(
                                 widget.signaturePng,
-                                fit: BoxFit.fill,
+                                fit: BoxFit.contain,
                                 gaplessPlayback: true,
                               ),
                             ),
@@ -209,21 +208,39 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
   void _dragHandle(Offset delta, Rect pageBox, Alignment alignment) {
     if (pageBox.width <= 0 || pageBox.height <= 0) return;
     final dx = delta.dx / pageBox.width;
-    final grow = alignment.x * dx;
+    final dy = delta.dy / pageBox.height;
+    final widthFromX = alignment.x * dx;
+    final widthFromY = _pageAspect <= 0
+        ? 0.0
+        : alignment.y * dy * _sigAspect / _pageAspect;
+    final grow = widthFromX.abs() >= widthFromY.abs() ? widthFromX : widthFromY;
     setState(() {
-      final next = (_width + grow).clamp(0.16, 0.92);
-      final applied = next - _width;
-      _width = next;
+      final previous = _width;
+      _width = _clampWidth(previous + grow);
+      final applied = _width - previous;
+      final appliedHeight = signatureHeightFraction(
+        width: applied,
+        pageAspect: _pageAspect,
+        signatureAspect: _sigAspect,
+      );
       _centerX = (_centerX + alignment.x * applied / 2).clamp(0.08, 0.92);
-      final heightDelta = alignment.y * delta.dy / pageBox.height;
-      final widthFromHeight = heightDelta * _sigAspect * _pageAspect;
-      final nextH = (_width + widthFromHeight).clamp(0.16, 0.92);
-      final appliedH = nextH - _width;
-      _width = nextH;
-      _centerY = (_centerY +
-              alignment.y * (appliedH / _sigAspect / _pageAspect) / 2)
-          .clamp(0.08, 0.92);
+      _centerY = (_centerY + alignment.y * appliedHeight / 2).clamp(0.08, 0.92);
     });
+  }
+
+  double _clampWidth(double width) {
+    var next = width.clamp(0.12, 0.92).toDouble();
+    final height = signatureHeightFraction(
+      width: next,
+      pageAspect: _pageAspect,
+      signatureAspect: _sigAspect,
+    );
+    if (height > 0.85 && _pageAspect > 0) {
+      next = 0.85 * _sigAspect / _pageAspect;
+    } else if (height < 0.04 && _pageAspect > 0) {
+      next = 0.04 * _sigAspect / _pageAspect;
+    }
+    return next.clamp(0.08, 0.95).toDouble();
   }
 
   Rect _contain(Size outer, Size inner) {

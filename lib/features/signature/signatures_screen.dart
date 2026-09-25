@@ -77,18 +77,7 @@ class _SignaturesScreenState extends State<SignaturesScreen> {
                 return Card(
                   child: ListTile(
                     key: Key('signature-${item.id}'),
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Checkerboard(
-                        child: Image.file(
-                          // File is imported below via dart:io in the tile widget.
-                          signatureFile(item.imagePath),
-                          width: 72,
-                          height: 48,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
+                    leading: SignatureThumb(path: item.imagePath),
                     title: Text(item.name),
                     onTap: widget.selecting
                         ? () => Navigator.pop(context, item)
@@ -204,5 +193,61 @@ class _SignaturesScreenState extends State<SignaturesScreen> {
     if (!ok || !mounted) return;
     await AppScope.of(context).signatures.delete(item.id);
     await _load();
+  }
+}
+
+/// Checkerboard preview of a saved signature. The file is read before the
+/// first paint and drawn with [Image.memory], the same path as placement.
+class SignatureThumb extends StatefulWidget {
+  const SignatureThumb({super.key, required this.path});
+
+  final String path;
+
+  @override
+  State<SignatureThumb> createState() => _SignatureThumbState();
+}
+
+class _SignatureThumbState extends State<SignatureThumb> {
+  Uint8List? _bytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _read();
+  }
+
+  @override
+  void didUpdateWidget(SignatureThumb oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) _read();
+  }
+
+  void _read() {
+    final file = signatureFile(widget.path);
+    _bytes = file.existsSync() ? file.readAsBytesSync() : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = _bytes;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 88,
+        height: 48,
+        child: Checkerboard(
+          child: bytes == null
+              ? const SizedBox.expand()
+              : Image.memory(
+                  bytes,
+                  width: 88,
+                  height: 48,
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true,
+                  filterQuality: FilterQuality.medium,
+                ),
+        ),
+      ),
+    );
   }
 }

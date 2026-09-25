@@ -88,7 +88,17 @@ img.Image extractSignatureImage(
       output.setPixelRgba(x, y, color.$1, color.$2, color.$3, a);
     }
   }
-  return _trim(output);
+  return trimSignatureImage(output);
+}
+
+/// Drops transparent margin so the PNG bounds the ink.
+Uint8List tightenSignaturePng(Uint8List png) {
+  final decoded = img.decodeImage(png);
+  if (decoded == null) return png;
+  final tight = trimSignatureImage(
+    decoded.convert(format: img.Format.uint8, numChannels: 4),
+  );
+  return Uint8List.fromList(img.encodePng(tight));
 }
 
 Uint8List _paperBackground(Uint8List luma, int width, int height) {
@@ -206,14 +216,14 @@ void _removeSpecks(Uint8List alpha, int width, int height) {
   }
 }
 
-img.Image _trim(img.Image source) {
+img.Image trimSignatureImage(img.Image source) {
   var minX = source.width;
   var minY = source.height;
   var maxX = -1;
   var maxY = -1;
   for (var y = 0; y < source.height; y++) {
     for (var x = 0; x < source.width; x++) {
-      if (source.getPixel(x, y).a < 12) continue;
+      if (source.getPixel(x, y).a < 40) continue;
       if (x < minX) minX = x;
       if (y < minY) minY = y;
       if (x > maxX) maxX = x;
