@@ -398,6 +398,12 @@ abstract class AppLocalizations {
   /// **'Page {current} of {total}'**
   String pagePosition(int current, int total);
 
+  /// No description provided for @filterAutoEnhance.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto enhance'**
+  String get filterAutoEnhance;
+
   /// No description provided for @filterOriginal.
   ///
   /// In en, this message translates to:

@@ -31,7 +31,7 @@ lib/
 
 `LibraryController` loads folder and document metadata and filters search in memory after that load. `DocumentRepository` is the only writer of SQLite rows and page files. Page images live under the app documents directory (`docscan/documents/{id}/`). Metadata lives in `docscan.db`.
 
-Scanning runs in `ScanSession`. Heavy work (`preparePage`, `renderRequest`) goes through `compute` so the UI isolate stays responsive. `document_processor.dart` is pure Dart (`package:image`): downscale, Sobel edges, convex hull, corner pick, homography warp, then the filter. The same code runs on Android, iOS, and in unit tests. Stored images are capped at 1800 px on the long edge (`AppConfig.maxImageEdge`). A document holds at most 40 pages.
+Scanning runs in `ScanSession`. Heavy work (`preparePage`, `renderRequest`) goes through `compute` so the UI isolate stays responsive. The shutter uses `ResolutionPreset.max` and `takePicture` (a still, not a preview frame). `document_processor.dart` is pure Dart (`package:image`): edge detection on a small copy, full-resolution homography, then the filter. New scans default to Auto enhance, which flattens shadows before export. The filtered JPEG (quality 88) is what the PDF and JPG share sheet embed. The long edge is kept up to 4096 px (`AppConfig.maxImageEdge`). A document holds at most 40 pages.
 
 ## Packages and why
 

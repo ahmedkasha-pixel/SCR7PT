@@ -85,6 +85,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.text('تحسين تلقائي'), findsOneWidget);
     expect(find.text('الأصل'), findsOneWidget);
     await _save(tester, 'filters-ar');
     _pop(tester);

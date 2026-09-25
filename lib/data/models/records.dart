@@ -1,6 +1,6 @@
 import '../../core/geometry/quad.dart';
 
-enum PageFilter { original, grayscale, blackAndWhite, brighten }
+enum PageFilter { autoEnhance, original, grayscale, blackAndWhite, brighten }
 
 enum ShareFormat { pdf, jpg }
 

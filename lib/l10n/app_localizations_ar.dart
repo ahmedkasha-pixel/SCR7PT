@@ -190,6 +190,9 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get filterAutoEnhance => 'تحسين تلقائي';
+
+  @override
   String get filterOriginal => 'الأصل';
 
   @override

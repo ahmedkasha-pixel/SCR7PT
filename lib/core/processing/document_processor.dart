@@ -6,6 +6,7 @@ import 'package:image/image.dart' as img;
 import '../app_config.dart';
 import '../geometry/quad.dart';
 import '../../data/models/records.dart';
+import 'enhance.dart';
 
 /// Result of preparing a captured or imported photo for editing.
 class PreparedPage {
@@ -37,17 +38,22 @@ class RenderRequest {
   final String filterName;
 }
 
-/// Decode, downscale, detect edges, and build the first preview.
+/// Decode at capture resolution, detect edges, and preview the default filter.
 PreparedPage preparePage(Uint8List bytes) {
-  final scaled = _decodeScaled(bytes);
-  final quad = detectQuad(scaled);
-  final preview = renderImage(scaled, quad, PageFilter.original);
+  final decoded = _decodeFull(bytes);
+  final quad = detectQuad(decoded);
+  final preview = renderImage(decoded, quad, PageFilter.autoEnhance);
+  final original = _isJpeg(bytes)
+      ? bytes
+      : Uint8List.fromList(img.encodeJpg(decoded, quality: 92));
   return PreparedPage(
-    originalJpeg: Uint8List.fromList(img.encodeJpg(scaled, quality: 90)),
-    previewJpeg: Uint8List.fromList(img.encodeJpg(preview, quality: 90)),
+    originalJpeg: original,
+    previewJpeg: Uint8List.fromList(
+      img.encodeJpg(preview, quality: AppConfig.jpegQuality),
+    ),
     corners: quad.toList(),
-    width: scaled.width,
-    height: scaled.height,
+    width: decoded.width,
+    height: decoded.height,
   );
 }
 
@@ -66,7 +72,9 @@ Uint8List renderJpeg(Uint8List originalJpeg, Quad quad, PageFilter filter) {
   }
   final rgb = decoded.convert(format: img.Format.uint8, numChannels: 3);
   final rendered = renderImage(rgb, quad, filter);
-  return Uint8List.fromList(img.encodeJpg(rendered, quality: 90));
+  return Uint8List.fromList(
+    img.encodeJpg(rendered, quality: AppConfig.jpegQuality),
+  );
 }
 
 img.Image renderImage(img.Image source, Quad quad, PageFilter filter) {
@@ -77,15 +85,14 @@ img.Image renderImage(img.Image source, Quad quad, PageFilter filter) {
 img.Image applyFilter(img.Image source, PageFilter filter) {
   final rgb = source.convert(format: img.Format.uint8, numChannels: 3);
   switch (filter) {
+    case PageFilter.autoEnhance:
+      return autoEnhance(rgb);
     case PageFilter.original:
       return rgb;
     case PageFilter.grayscale:
-      return _map(rgb, (r, g, b) {
-        final luma = _luma(r, g, b);
-        return (luma, luma, luma);
-      });
+      return grayscaleNormalized(rgb);
     case PageFilter.blackAndWhite:
-      return _blackAndWhite(rgb);
+      return blackAndWhiteAdaptive(rgb);
     case PageFilter.brighten:
       return _map(rgb, (r, g, b) {
         int lift(int channel) => (channel * 1.15 + 18).round().clamp(0, 255);
@@ -147,16 +154,13 @@ img.Image warpPerspective(img.Image source, Quad quad) {
   final br = _denorm(quad.bottomRight, view.width, view.height);
   final bl = _denorm(quad.bottomLeft, view.width, view.height);
 
-  var outW = math.max(_dist(tl, tr), _dist(bl, br)).round();
-  var outH = math.max(_dist(tl, bl), _dist(tr, br)).round();
-  outW = outW.clamp(32, 4000);
-  outH = outH.clamp(32, 4000);
-  final longEdge = math.max(outW, outH);
-  if (longEdge > AppConfig.maxImageEdge) {
-    final scale = AppConfig.maxImageEdge / longEdge;
-    outW = math.max(32, (outW * scale).round());
-    outH = math.max(32, (outH * scale).round());
-  }
+  final size = warpOutputSize(
+    sourceWidth: view.width,
+    sourceHeight: view.height,
+    quad: quad,
+  );
+  final outW = size.width;
+  final outH = size.height;
 
   final homography = _homography(
     from: [
@@ -180,7 +184,64 @@ img.Image warpPerspective(img.Image source, Quad quad) {
   return output;
 }
 
-img.Image _decodeScaled(Uint8List bytes) {
+/// Pixel size of the warped page. The long side stays at the quad's own
+/// resolution, up to [AppConfig.maxImageEdge], so a 12 MP still is not
+/// reduced to a preview.
+({int width, int height}) warpOutputSize({
+  required int sourceWidth,
+  required int sourceHeight,
+  required Quad quad,
+}) {
+  if (quad.isNearFullFrame()) {
+    return _capEdge(sourceWidth, sourceHeight);
+  }
+  final tl = _denorm(quad.topLeft, sourceWidth, sourceHeight);
+  final tr = _denorm(quad.topRight, sourceWidth, sourceHeight);
+  final br = _denorm(quad.bottomRight, sourceWidth, sourceHeight);
+  final bl = _denorm(quad.bottomLeft, sourceWidth, sourceHeight);
+  final outW = math.max(32, math.max(_dist(tl, tr), _dist(bl, br)).round());
+  final outH = math.max(32, math.max(_dist(tl, bl), _dist(tr, br)).round());
+  return _capEdge(outW, outH);
+}
+
+({int width, int height}) _capEdge(int width, int height) {
+  final longEdge = math.max(width, height);
+  if (longEdge <= AppConfig.maxImageEdge) {
+    return (width: width, height: height);
+  }
+  final scale = AppConfig.maxImageEdge / longEdge;
+  return (
+    width: math.max(32, (width * scale).round()),
+    height: math.max(32, (height * scale).round()),
+  );
+}
+
+/// A4 page photographed on a 12 MP sensor (4000×3000) held in portrait.
+///
+/// The page fills the frame height. This is the default export size before
+/// Phase 2 compression.
+({int width, int height}) a4ExportSizeFrom12Mp() {
+  const sourceWidth = 3000;
+  const sourceHeight = 4000;
+  final pageWidth = (sourceHeight * 210 / 297).round();
+  final inset = (sourceWidth - pageWidth) / 2 / sourceWidth;
+  final quad = Quad(
+    topLeft: NormPoint(inset, 0),
+    topRight: NormPoint(1 - inset, 0),
+    bottomRight: NormPoint(1 - inset, 1),
+    bottomLeft: NormPoint(inset, 1),
+  );
+  return warpOutputSize(
+    sourceWidth: sourceWidth,
+    sourceHeight: sourceHeight,
+    quad: quad,
+  );
+}
+
+bool _isJpeg(Uint8List bytes) =>
+    bytes.length > 3 && bytes[0] == 0xFF && bytes[1] == 0xD8;
+
+img.Image _decodeFull(Uint8List bytes) {
   final decoded = img.decodeImage(bytes);
   if (decoded == null) {
     throw const FormatException('unsupported-image');
@@ -200,39 +261,6 @@ img.Image _downscale(img.Image source, int maxEdge) {
     height: math.max(1, (source.height * scale).round()),
     interpolation: img.Interpolation.linear,
   );
-}
-
-img.Image _blackAndWhite(img.Image source) {
-  final view = _Rgb(source);
-  final luma = Uint8List(view.width * view.height);
-  var minLuma = 255;
-  var maxLuma = 0;
-  for (var y = 0; y < view.height; y++) {
-    for (var x = 0; x < view.width; x++) {
-      final value = view.luma(x, y);
-      luma[y * view.width + x] = value;
-      if (value < minLuma) minLuma = value;
-      if (value > maxLuma) maxLuma = value;
-    }
-  }
-  final span = math.max(1, maxLuma - minLuma);
-  final output = img.Image(
-    width: view.width,
-    height: view.height,
-    numChannels: 3,
-  );
-  final dest = _Rgb(output);
-  for (var y = 0; y < view.height; y++) {
-    for (var x = 0; x < view.width; x++) {
-      final value = luma[y * view.width + x];
-      final stretched = span < 16
-          ? value
-          : ((value - minLuma) * 255 / span).round();
-      final ink = stretched >= 128 ? 255 : 0;
-      dest.set(x, y, ink, ink, ink);
-    }
-  }
-  return output;
 }
 
 img.Image _map(

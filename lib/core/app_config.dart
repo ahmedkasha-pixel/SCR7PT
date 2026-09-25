@@ -6,9 +6,12 @@
 class AppConfig {
   static const String appName = 'SCR7PT';
 
-  /// Longest edge kept for stored page images. Enough for a readable page
-  /// without holding multi-megapixel photos in memory.
-  static const int maxImageEdge = 1800;
+  /// Safety cap for a still. A 12 MP frame (4000×3000) is kept; only larger
+  /// sensors are reduced, and never below a readable page.
+  static const int maxImageEdge = 4096;
+
+  /// JPEG quality for the filtered page embedded in PDF and JPG export.
+  static const int jpegQuality = 88;
 
   static const int maxPagesPerDocument = 40;
 

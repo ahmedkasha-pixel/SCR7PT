@@ -27,7 +27,7 @@ class LiveScanCamera implements ScanCamera {
       );
       final controller = CameraController(
         back,
-        ResolutionPreset.high,
+        ResolutionPreset.max,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );

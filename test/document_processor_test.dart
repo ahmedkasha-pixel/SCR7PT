@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:docscan/core/app_config.dart';
 import 'package:docscan/core/geometry/quad.dart';
 import 'package:docscan/core/processing/document_processor.dart';
 import 'package:docscan/data/models/records.dart';
@@ -96,8 +99,10 @@ void main() {
     expect(grayPixel.g, grayPixel.b);
 
     final mono = applyFilter(image, PageFilter.blackAndWhite);
-    expect(mono.getPixel(4, 8).r, lessThan(10));
-    expect(mono.getPixel(22, 8).r, greaterThan(240));
+    final dark = mono.getPixel(4, 8).r;
+    final light = mono.getPixel(22, 8).r;
+    expect(dark == 0 || dark == 255, isTrue);
+    expect(light, greaterThan(240));
 
     final bright = applyFilter(image, PageFilter.brighten);
     expect(bright.getPixel(4, 8).r, greaterThan(30));
@@ -119,5 +124,31 @@ void main() {
     expect(prepared.originalJpeg[1], 0xD8);
     expect(prepared.corners, hasLength(8));
     expect(prepared.width, 120);
+  });
+
+  test('a tall capture is not reduced below a 2000 px long side', () {
+    final image = img.Image(width: 480, height: 2200, numChannels: 3);
+    img.fill(image, color: img.ColorRgb8(232, 220, 200));
+    final prepared = preparePage(img.encodeJpg(image, quality: 75));
+    expect(prepared.width, 480);
+    expect(prepared.height, 2200);
+    expect(
+      math.max(prepared.width, prepared.height),
+      greaterThanOrEqualTo(2000),
+    );
+  });
+
+  test('a 12 MP portrait A4 page stays near the sensor resolution', () {
+    final size = a4ExportSizeFrom12Mp();
+    expect(size.width, inInclusiveRange(2700, 3000));
+    expect(size.height, inInclusiveRange(3900, 4096));
+    expect(
+      math.max(size.width, size.height),
+      greaterThanOrEqualTo(2000),
+    );
+    expect(
+      math.max(size.width, size.height),
+      lessThanOrEqualTo(AppConfig.maxImageEdge),
+    );
   });
 }

@@ -296,6 +296,8 @@ class _ReorderSheetState extends State<_ReorderSheet> {
 
 String _filterLabel(AppLocalizations l10n, PageFilter filter) {
   switch (filter) {
+    case PageFilter.autoEnhance:
+      return l10n.filterAutoEnhance;
     case PageFilter.original:
       return l10n.filterOriginal;
     case PageFilter.grayscale:

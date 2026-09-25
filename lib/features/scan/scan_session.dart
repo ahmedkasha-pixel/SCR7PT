@@ -13,7 +13,7 @@ class EditablePage {
     required this.corners,
     required this.width,
     required this.height,
-    this.filter = PageFilter.original,
+    this.filter = PageFilter.autoEnhance,
     this.cropping = true,
     this.stale = false,
   });
@@ -131,7 +131,6 @@ class ScanSession extends ChangeNotifier {
 
   Future<void> commitPending() async {
     for (final page in pages) {
-      if (!page.stale) continue;
       page.cropping = false;
       await _rerender(page);
       page.stale = false;

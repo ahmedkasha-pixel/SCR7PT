@@ -50,6 +50,7 @@
   "openSettings": "فتح الإعدادات",
   "startingCamera": "جارٍ تشغيل الكاميرا…",
   "pagePosition": "صفحة {current} من {total}",
+  "filterAutoEnhance": "تحسين تلقائي",
   "filterOriginal": "الأصل",
   "filterGrayscale": "رمادي",
   "filterBlackAndWhite": "أبيض وأسود",

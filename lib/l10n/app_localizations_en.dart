@@ -185,6 +185,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get filterAutoEnhance => 'Auto enhance';
+
+  @override
   String get filterOriginal => 'Original';
 
   @override
