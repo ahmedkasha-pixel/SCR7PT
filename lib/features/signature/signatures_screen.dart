@@ -233,18 +233,19 @@ class _SignatureThumbState extends State<SignatureThumb> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: SizedBox(
-        width: 88,
-        height: 48,
+        width: 108,
+        height: 56,
         child: Checkerboard(
           child: bytes == null
               ? const SizedBox.expand()
-              : Image.memory(
-                  bytes,
-                  width: 88,
-                  height: 48,
-                  fit: BoxFit.contain,
-                  gaplessPlayback: true,
-                  filterQuality: FilterQuality.medium,
+              : Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Image.memory(
+                    bytes,
+                    fit: BoxFit.contain,
+                    gaplessPlayback: true,
+                    filterQuality: FilterQuality.medium,
+                  ),
                 ),
         ),
       ),

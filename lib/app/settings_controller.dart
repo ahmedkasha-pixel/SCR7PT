@@ -56,4 +56,16 @@ class SettingsController extends ChangeNotifier {
     await _repository.save(settings);
     notifyListeners();
   }
+
+  Future<void> setDriveAutoUpload(bool value) async {
+    settings = settings.copyWith(driveAutoUpload: value);
+    await _repository.save(settings);
+    notifyListeners();
+  }
+
+  Future<void> setDriveWifiOnly(bool value) async {
+    settings = settings.copyWith(driveWifiOnly: value);
+    await _repository.save(settings);
+    notifyListeners();
+  }
 }

@@ -163,5 +163,23 @@
     }
   },
   "cropDone": "Use this crop",
-  "removeBackground": "Remove background"
+  "removeBackground": "Remove background",
+  "driveNotSetUpTitle": "Google Drive is not set up yet",
+  "driveNotSetUpBody": "Add the Web client ID in lib/core/google_config.dart, then rebuild the app. Sign-in stays off until that ID is present.",
+  "driveSignIn": "Sign in with Google",
+  "driveSignOut": "Sign out",
+  "driveSignedOut": "Sign in to save documents into your Drive.",
+  "driveSignInFailed": "Google sign-in did not finish",
+  "driveAutoUpload": "Auto-upload new documents",
+  "driveWifiOnly": "Upload over Wi-Fi only",
+  "driveFolderHint": "Files are saved in a Drive folder named SCR7PT. App folders become subfolders.",
+  "driveSave": "Save to Drive",
+  "driveStatusNone": "Not uploaded",
+  "driveStatusQueued": "Waiting to upload",
+  "driveStatusUploading": "Uploading",
+  "driveStatusUploaded": "Uploaded",
+  "driveStatusFailed": "Upload failed",
+  "driveRetry": "Retry",
+  "driveQueued": "Added to the upload queue",
+  "driveNeedsSignIn": "Sign in from Settings before saving to Drive"
 }

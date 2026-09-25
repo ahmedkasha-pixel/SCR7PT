@@ -11,6 +11,8 @@ import '../../data/models/records.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/dialogs.dart';
 import '../../widgets/share_sheet.dart';
+import '../drive/drive_models.dart';
+import '../drive/drive_status_badge.dart';
 import '../home/home_screen.dart';
 import '../signature/signature_place_screen.dart';
 import '../signature/signatures_screen.dart';
@@ -54,6 +56,20 @@ class _DocumentScreenState extends State<DocumentScreen> {
     super.dispose();
   }
 
+  Future<void> _saveToDrive() async {
+    final l10n = AppLocalizations.of(context);
+    final scope = AppScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await scope.drive.saveDocument(_document.id);
+    if (!mounted) return;
+    final message = switch (result) {
+      DriveSaveResult.queued => l10n.driveQueued,
+      DriveSaveResult.notConfigured => l10n.driveNotSetUpTitle,
+      DriveSaveResult.needsSignIn => l10n.driveNeedsSignIn,
+    };
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _load() async {
     final scope = AppScope.of(context);
     final document = await scope.documents.documentById(widget.document.id);
@@ -83,6 +99,12 @@ class _DocumentScreenState extends State<DocumentScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          IconButton(
+            key: const Key('document-drive'),
+            tooltip: l10n.driveSave,
+            onPressed: _pages.isEmpty ? null : _saveToDrive,
+            icon: const Icon(Icons.cloud_upload_outlined),
+          ),
           IconButton(
             key: const Key('document-sign'),
             tooltip: l10n.placeSignature,
@@ -133,6 +155,22 @@ class _DocumentScreenState extends State<DocumentScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: ListenableBuilder(
+                      listenable: AppScope.of(context).drive,
+                      builder: (context, _) {
+                        final drive = AppScope.of(context).drive;
+                        return DriveStatusBadge(
+                          link: drive.linkFor(_document.id),
+                          onRetry: () => drive.retry(_document.id),
+                        );
+                      },
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: PageView.builder(
                     controller: _controller,
@@ -197,23 +235,35 @@ class _DocumentScreenState extends State<DocumentScreen> {
                   top: false,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _rename,
-                            icon: const Icon(Icons.drive_file_rename_outline),
-                            label: Text(l10n.rename),
-                          ),
+                        OutlinedButton.icon(
+                          key: const Key('document-save-drive'),
+                          onPressed: _saveToDrive,
+                          icon: const Icon(Icons.cloud_upload_outlined),
+                          label: Text(l10n.driveSave),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: FilledButton.icon(
-                            key: const Key('document-share'),
-                            onPressed: () => shareDocument(context, _document),
-                            icon: const Icon(Icons.ios_share),
-                            label: Text(l10n.share),
-                          ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _rename,
+                                icon: const Icon(Icons.drive_file_rename_outline),
+                                label: Text(l10n.rename),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: FilledButton.icon(
+                                key: const Key('document-share'),
+                                onPressed: () => shareDocument(context, _document),
+                                icon: const Icon(Icons.ios_share),
+                                label: Text(l10n.share),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

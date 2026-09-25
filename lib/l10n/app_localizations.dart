@@ -895,6 +895,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove background'**
   String get removeBackground;
+
+  /// No description provided for @driveNotSetUpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Drive is not set up yet'**
+  String get driveNotSetUpTitle;
+
+  /// No description provided for @driveNotSetUpBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the Web client ID in lib/core/google_config.dart, then rebuild the app. Sign-in stays off until that ID is present.'**
+  String get driveNotSetUpBody;
+
+  /// No description provided for @driveSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Google'**
+  String get driveSignIn;
+
+  /// No description provided for @driveSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get driveSignOut;
+
+  /// No description provided for @driveSignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to save documents into your Drive.'**
+  String get driveSignedOut;
+
+  /// No description provided for @driveSignInFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in did not finish'**
+  String get driveSignInFailed;
+
+  /// No description provided for @driveAutoUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-upload new documents'**
+  String get driveAutoUpload;
+
+  /// No description provided for @driveWifiOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload over Wi-Fi only'**
+  String get driveWifiOnly;
+
+  /// No description provided for @driveFolderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Files are saved in a Drive folder named SCR7PT. App folders become subfolders.'**
+  String get driveFolderHint;
+
+  /// No description provided for @driveSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to Drive'**
+  String get driveSave;
+
+  /// No description provided for @driveStatusNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Not uploaded'**
+  String get driveStatusNone;
+
+  /// No description provided for @driveStatusQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to upload'**
+  String get driveStatusQueued;
+
+  /// No description provided for @driveStatusUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading'**
+  String get driveStatusUploading;
+
+  /// No description provided for @driveStatusUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded'**
+  String get driveStatusUploaded;
+
+  /// No description provided for @driveStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed'**
+  String get driveStatusFailed;
+
+  /// No description provided for @driveRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get driveRetry;
+
+  /// No description provided for @driveQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to the upload queue'**
+  String get driveQueued;
+
+  /// No description provided for @driveNeedsSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in from Settings before saving to Drive'**
+  String get driveNeedsSignIn;
 }
 
 class _AppLocalizationsDelegate

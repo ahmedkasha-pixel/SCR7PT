@@ -445,4 +445,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get removeBackground => 'Remove background';
+
+  @override
+  String get driveNotSetUpTitle => 'Google Drive is not set up yet';
+
+  @override
+  String get driveNotSetUpBody =>
+      'Add the Web client ID in lib/core/google_config.dart, then rebuild the app. Sign-in stays off until that ID is present.';
+
+  @override
+  String get driveSignIn => 'Sign in with Google';
+
+  @override
+  String get driveSignOut => 'Sign out';
+
+  @override
+  String get driveSignedOut => 'Sign in to save documents into your Drive.';
+
+  @override
+  String get driveSignInFailed => 'Google sign-in did not finish';
+
+  @override
+  String get driveAutoUpload => 'Auto-upload new documents';
+
+  @override
+  String get driveWifiOnly => 'Upload over Wi-Fi only';
+
+  @override
+  String get driveFolderHint =>
+      'Files are saved in a Drive folder named SCR7PT. App folders become subfolders.';
+
+  @override
+  String get driveSave => 'Save to Drive';
+
+  @override
+  String get driveStatusNone => 'Not uploaded';
+
+  @override
+  String get driveStatusQueued => 'Waiting to upload';
+
+  @override
+  String get driveStatusUploading => 'Uploading';
+
+  @override
+  String get driveStatusUploaded => 'Uploaded';
+
+  @override
+  String get driveStatusFailed => 'Upload failed';
+
+  @override
+  String get driveRetry => 'Retry';
+
+  @override
+  String get driveQueued => 'Added to the upload queue';
+
+  @override
+  String get driveNeedsSignIn => 'Sign in from Settings before saving to Drive';
 }

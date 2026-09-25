@@ -8,6 +8,8 @@ class SettingsRepository {
   static const appearanceKey = 'theme_mode';
   static const pageSizeKey = 'page_size_mode';
   static const compressionKey = 'compression_level';
+  static const driveAutoUploadKey = 'drive_auto_upload';
+  static const driveWifiOnlyKey = 'drive_wifi_only';
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -29,6 +31,8 @@ class SettingsRepository {
       compression:
           CompressionLevel.values.asNameMap()[compression] ??
           CompressionLevel.medium,
+      driveAutoUpload: prefs.getBool(driveAutoUploadKey) ?? false,
+      driveWifiOnly: prefs.getBool(driveWifiOnlyKey) ?? false,
     );
   }
 
@@ -43,5 +47,7 @@ class SettingsRepository {
     await prefs.setString(appearanceKey, settings.appearance.name);
     await prefs.setString(pageSizeKey, settings.pageSizeMode.name);
     await prefs.setString(compressionKey, settings.compression.name);
+    await prefs.setBool(driveAutoUploadKey, settings.driveAutoUpload);
+    await prefs.setBool(driveWifiOnlyKey, settings.driveWifiOnly);
   }
 }

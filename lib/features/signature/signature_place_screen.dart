@@ -185,8 +185,11 @@ class _SignaturePlaceScreenState extends State<SignaturePlaceScreen> {
   }
 
   Widget _resizeHandle(Rect pageBox, Rect mark, Alignment alignment) {
-    final point = alignment.withinRect(mark);
     const size = 18.0;
+    const outset = 16.0;
+    final point =
+        alignment.withinRect(mark) +
+        Offset(alignment.x * outset, alignment.y * outset);
     return Positioned(
       left: point.dx - size / 2,
       top: point.dy - size / 2,

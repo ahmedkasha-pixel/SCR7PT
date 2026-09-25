@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
 import '../../data/models/records.dart';
-import '../../features/upcoming/upcoming_services.dart';
 import '../../l10n/app_localizations.dart';
+import '../drive/drive_settings_section.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -127,28 +127,8 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 28),
-              Text(
-                l10n.upcoming,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              for (final entry in UpcomingServices.catalog)
-                if (entry.kind == UpcomingKind.googleDrive)
-                Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    leading: Icon(_icon(entry.kind)),
-                    title: Text(_title(l10n, entry.kind)),
-                    subtitle: Text(_body(l10n, entry.kind)),
-                    trailing: Text(l10n.phaseLabel(entry.phase)),
-                    onTap: () {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(l10n.comingSoon)));
-                    },
-                  ),
-                ),
-              const SizedBox(height: 8),
+              const DriveSettingsSection(),
+              const SizedBox(height: 24),
               Text(
                 l10n.storageNote,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -175,36 +155,4 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  IconData _icon(UpcomingKind kind) {
-    switch (kind) {
-      case UpcomingKind.compression:
-        return Icons.compress;
-      case UpcomingKind.signature:
-        return Icons.draw_outlined;
-      case UpcomingKind.googleDrive:
-        return Icons.cloud_outlined;
-    }
-  }
-
-  String _title(AppLocalizations l10n, UpcomingKind kind) {
-    switch (kind) {
-      case UpcomingKind.compression:
-        return l10n.compressionTitle;
-      case UpcomingKind.signature:
-        return l10n.signatureTitle;
-      case UpcomingKind.googleDrive:
-        return l10n.cloudTitle;
-    }
-  }
-
-  String _body(AppLocalizations l10n, UpcomingKind kind) {
-    switch (kind) {
-      case UpcomingKind.compression:
-        return l10n.compressionBody;
-      case UpcomingKind.signature:
-        return l10n.signatureBody;
-      case UpcomingKind.googleDrive:
-        return l10n.cloudBody;
-    }
-  }
 }

@@ -11,7 +11,11 @@ import 'data/db/app_database.dart';
 import 'data/repositories/document_repository.dart';
 import 'data/repositories/settings_repository.dart';
 import 'data/repositories/signature_repository.dart';
+import 'core/google_config.dart';
 import 'data/storage/file_store.dart';
+import 'features/drive/drive_controller.dart';
+import 'features/drive/drive_store.dart';
+import 'features/drive/google_drive_gateway.dart';
 import 'features/scan/gallery_picker.dart';
 import 'features/scan/scan_camera.dart';
 import 'features/share/document_sharer.dart';
@@ -29,13 +33,27 @@ Future<void> main() async {
   final signatures = SignatureRepository(database: database, files: files);
   final settings = SettingsController(SettingsRepository());
   await settings.load();
+  final sharer = DocumentSharer(files: files, signatures: signatures);
+  final drive = DriveController(
+    configured: GoogleConfig.isConfigured,
+    store: SqliteDriveStore(database),
+    gateway: GoogleDriveGateway(),
+    documents: documents,
+    sharer: sharer,
+    settings: settings,
+  );
+  documents.onDocumentChanged = drive.considerAutoUpload;
+  await drive.start(
+    monitor: GoogleConfig.isConfigured ? PluginNetworkMonitor() : null,
+  );
   runApp(
     DocScanApp(
       library: LibraryController(documents),
       settings: settings,
       documents: documents,
       signatures: signatures,
-      sharer: DocumentSharer(files: files, signatures: signatures),
+      sharer: sharer,
+      drive: drive,
       gallery: ImagePickerGallery(),
       createCamera: LiveScanCamera.new,
     ),

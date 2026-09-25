@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../app/app_scope.dart';
 import '../core/processing/compress.dart';
 import '../data/models/records.dart';
+import '../features/drive/drive_models.dart';
 import '../l10n/app_localizations.dart';
 import 'dialogs.dart';
 
@@ -45,10 +46,25 @@ Future<void> shareDocument(
   );
   if (choice == null || !context.mounted) return;
   final messenger = ScaffoldMessenger.of(context);
+  await scope.settings.setCompression(choice.level);
+  if (choice.toDrive) {
+    final result = await scope.drive.saveDocument(
+      document.id,
+      format: choice.format,
+      compression: choice.level,
+    );
+    if (!context.mounted) return;
+    final message = switch (result) {
+      DriveSaveResult.queued => l10n.driveQueued,
+      DriveSaveResult.notConfigured => l10n.driveNotSetUpTitle,
+      DriveSaveResult.needsSignIn => l10n.driveNeedsSignIn,
+    };
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+    return;
+  }
+  if (!context.mounted) return;
   final box = context.findRenderObject() as RenderBox?;
   final origin = box == null ? null : box.localToGlobal(Offset.zero) & box.size;
-  await scope.settings.setCompression(choice.level);
-  if (!context.mounted) return;
   unawaited(showBusyDialog(context, l10n.preparingShare));
   try {
     await scope.sharer.shareDocument(
@@ -65,7 +81,11 @@ Future<void> shareDocument(
   }
 }
 
-typedef ShareChoice = ({ShareFormat format, CompressionLevel level});
+typedef ShareChoice = ({
+  ShareFormat format,
+  CompressionLevel level,
+  bool toDrive,
+});
 
 class ShareFormatSheet extends StatefulWidget {
   const ShareFormatSheet({
@@ -156,9 +176,21 @@ class _ShareFormatSheetState extends State<ShareFormatSheet> {
               onPressed: () => Navigator.pop(context, (
                 format: _format,
                 level: _level,
+                toDrive: false,
               )),
               icon: const Icon(Icons.ios_share),
               label: Text(l10n.share),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              key: const Key('share-save-drive'),
+              onPressed: () => Navigator.pop(context, (
+                format: _format,
+                level: _level,
+                toDrive: true,
+              )),
+              icon: const Icon(Icons.cloud_upload_outlined),
+              label: Text(l10n.driveSave),
             ),
           ],
         ),

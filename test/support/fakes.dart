@@ -11,6 +11,10 @@ import 'package:docscan/data/repositories/signature_repository.dart';
 import 'package:docscan/data/storage/file_store.dart';
 import 'package:docscan/features/scan/gallery_picker.dart';
 import 'package:docscan/features/scan/scan_camera.dart';
+import 'package:docscan/features/drive/drive_controller.dart';
+import 'package:docscan/features/drive/drive_gateway.dart';
+import 'package:docscan/features/drive/drive_models.dart';
+import 'package:docscan/features/drive/drive_store.dart';
 import 'package:docscan/features/share/document_sharer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -95,11 +99,40 @@ class TestHarness {
   }
 }
 
+class FakeDriveGateway implements DriveGateway {
+  @override
+  Future<DriveAccount?> restore() async => null;
+
+  @override
+  Future<DriveAccount> signIn() async {
+    return const DriveAccount(email: 'user@gmail.com', displayName: 'مستخدم');
+  }
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<List<String>> upload({
+    required List<DrivePart> parts,
+    required List<String> existingFileIds,
+    required String? subfolder,
+    required Future<void> Function(double progress) onProgress,
+  }) async {
+    await onProgress(1);
+    return existingFileIds.isEmpty
+        ? ['drive-file']
+        : List<String>.from(existingFileIds);
+  }
+}
+
 Future<TestHarness> createHarness({
   Map<String, Object> preferences = const {},
   List<Uint8List> gallery = const [],
   Uint8List? picture,
   Uint8List? preview,
+  bool driveConfigured = false,
+  DriveAccount? driveAccount,
+  List<DriveLink> driveLinks = const [],
 }) async {
   TestWidgetsFlutterBinding.ensureInitialized();
   ensureSqlite();
@@ -113,18 +146,35 @@ Future<TestHarness> createHarness({
   await settings.load();
   final library = LibraryController(documents);
   final shared = <ShareParams>[];
+  final sharer = DocumentSharer(
+    signatures: signatures,
+    files: files,
+    share: (params) async {
+      shared.add(params);
+    },
+  );
+  final driveStore = MemoryDriveStore();
+  for (final link in driveLinks) {
+    await driveStore.put(link);
+  }
+  final drive = DriveController(
+    configured: driveConfigured,
+    previewAccount: driveAccount,
+    store: driveStore,
+    gateway: FakeDriveGateway(),
+    documents: documents,
+    sharer: sharer,
+    settings: settings,
+  );
+  documents.onDocumentChanged = drive.considerAutoUpload;
+  await drive.start();
   final app = DocScanApp(
     library: library,
     settings: settings,
     documents: documents,
     signatures: signatures,
-    sharer: DocumentSharer(
-      signatures: signatures,
-      files: files,
-      share: (params) async {
-        shared.add(params);
-      },
-    ),
+    sharer: sharer,
+    drive: drive,
     gallery: FakeGallery(gallery),
     createCamera: () =>
         FakeScanCamera(picture ?? Uint8List(0), preview: preview),

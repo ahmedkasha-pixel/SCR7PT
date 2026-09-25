@@ -447,4 +447,60 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get removeBackground => 'إزالة الخلفية';
+
+  @override
+  String get driveNotSetUpTitle => 'Google Drive غير مُعد بعد';
+
+  @override
+  String get driveNotSetUpBody =>
+      'أضف معرّف عميل الويب في الملف lib/core/google_config.dart ثم أعد بناء التطبيق. يبقى تسجيل الدخول متوقفاً حتى يوجد هذا المعرّف.';
+
+  @override
+  String get driveSignIn => 'تسجيل الدخول بحساب Google';
+
+  @override
+  String get driveSignOut => 'تسجيل الخروج';
+
+  @override
+  String get driveSignedOut => 'سجّل الدخول لحفظ المستندات في Drive.';
+
+  @override
+  String get driveSignInFailed => 'لم يكتمل تسجيل الدخول إلى Google';
+
+  @override
+  String get driveAutoUpload => 'رفع المستندات الجديدة تلقائياً';
+
+  @override
+  String get driveWifiOnly => 'الرفع عبر Wi-Fi فقط';
+
+  @override
+  String get driveFolderHint =>
+      'تُحفظ الملفات في مجلد Drive باسم SCR7PT، وتصبح مجلدات التطبيق مجلدات فرعية.';
+
+  @override
+  String get driveSave => 'حفظ في Drive';
+
+  @override
+  String get driveStatusNone => 'غير مرفوع';
+
+  @override
+  String get driveStatusQueued => 'بانتظار الرفع';
+
+  @override
+  String get driveStatusUploading => 'جارٍ الرفع';
+
+  @override
+  String get driveStatusUploaded => 'تم الرفع';
+
+  @override
+  String get driveStatusFailed => 'فشل الرفع';
+
+  @override
+  String get driveRetry => 'إعادة المحاولة';
+
+  @override
+  String get driveQueued => 'أُضيف إلى قائمة الرفع';
+
+  @override
+  String get driveNeedsSignIn => 'سجّل الدخول من الإعدادات قبل الحفظ في Drive';
 }

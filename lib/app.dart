@@ -9,6 +9,7 @@ import 'core/theme/app_theme.dart';
 import 'data/models/records.dart';
 import 'data/repositories/document_repository.dart';
 import 'data/repositories/signature_repository.dart';
+import 'features/drive/drive_controller.dart';
 import 'features/document/document_screen.dart';
 import 'features/folder/folder_screen.dart';
 import 'features/home/home_screen.dart';
@@ -41,6 +42,7 @@ class DocScanApp extends StatelessWidget {
     required this.documents,
     required this.signatures,
     required this.sharer,
+    required this.drive,
     required this.gallery,
     required this.createCamera,
     this.upcoming = const UpcomingServices(),
@@ -51,6 +53,7 @@ class DocScanApp extends StatelessWidget {
   final DocumentRepository documents;
   final SignatureRepository signatures;
   final DocumentSharer sharer;
+  final DriveController drive;
   final GalleryPicker gallery;
   final ScanCamera Function() createCamera;
   final UpcomingServices upcoming;
@@ -65,6 +68,7 @@ class DocScanApp extends StatelessWidget {
       gallery: gallery,
       createCamera: createCamera,
       sharer: sharer,
+      drive: drive,
       upcoming: upcoming,
       child: ListenableBuilder(
         listenable: settings,

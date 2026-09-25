@@ -15,6 +15,13 @@ class DocumentRepository {
   final DateTime Function() _clock;
   int _sequence = 0;
 
+  /// Fired after a document's pages, name, or folder change.
+  void Function(String documentId)? onDocumentChanged;
+
+  void _changed(String id) {
+    onDocumentChanged?.call(id);
+  }
+
   String nextId() => '${_clock().microsecondsSinceEpoch}_${_sequence++}';
 
   Future<void> close() => _database.close();
@@ -181,6 +188,7 @@ class DocumentRepository {
       rethrow;
     }
     final saved = await documentById(id);
+    _changed(id);
     return saved!;
   }
 
@@ -196,6 +204,7 @@ class DocumentRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    _changed(id);
   }
 
   Future<void> moveDocument(String id, String? folderId) async {
@@ -206,6 +215,7 @@ class DocumentRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    _changed(id);
   }
 
   Future<void> deleteDocument(String id) async {
@@ -258,6 +268,7 @@ class DocumentRepository {
       where: 'id = ?',
       whereArgs: [documentId],
     );
+    _changed(documentId);
   }
 
   /// [orderedIds] is the full page order for the document.
@@ -280,6 +291,7 @@ class DocumentRepository {
         whereArgs: [documentId],
       );
     });
+    _changed(documentId);
   }
 
   /// Returns true when the parent document was removed because it had no pages left.

@@ -4,6 +4,7 @@ import '../data/repositories/document_repository.dart';
 import '../data/repositories/signature_repository.dart';
 import '../features/scan/gallery_picker.dart';
 import '../features/scan/scan_camera.dart';
+import '../features/drive/drive_controller.dart';
 import '../features/share/document_sharer.dart';
 import '../features/upcoming/upcoming_services.dart';
 import 'library_controller.dart';
@@ -18,6 +19,7 @@ class AppScope extends InheritedWidget {
     required this.gallery,
     required this.createCamera,
     required this.sharer,
+    required this.drive,
     required this.upcoming,
     required super.child,
     super.key,
@@ -30,6 +32,7 @@ class AppScope extends InheritedWidget {
   final GalleryPicker gallery;
   final ScanCamera Function() createCamera;
   final DocumentSharer sharer;
+  final DriveController drive;
   final UpcomingServices upcoming;
 
   static AppScope of(BuildContext context) {

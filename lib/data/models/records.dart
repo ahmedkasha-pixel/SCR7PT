@@ -97,6 +97,8 @@ class AppSettings {
     this.appearance = AppAppearance.dark,
     this.pageSizeMode = PageSizeMode.auto,
     this.compression = CompressionLevel.medium,
+    this.driveAutoUpload = false,
+    this.driveWifiOnly = false,
   });
 
   /// `null` follows the device language, falling back to Arabic.
@@ -105,6 +107,8 @@ class AppSettings {
   final AppAppearance appearance;
   final PageSizeMode pageSizeMode;
   final CompressionLevel compression;
+  final bool driveAutoUpload;
+  final bool driveWifiOnly;
 
   AppSettings copyWith({
     String? languageCode,
@@ -113,6 +117,8 @@ class AppSettings {
     AppAppearance? appearance,
     PageSizeMode? pageSizeMode,
     CompressionLevel? compression,
+    bool? driveAutoUpload,
+    bool? driveWifiOnly,
   }) {
     return AppSettings(
       languageCode: clearLanguage ? null : (languageCode ?? this.languageCode),
@@ -120,6 +126,8 @@ class AppSettings {
       appearance: appearance ?? this.appearance,
       pageSizeMode: pageSizeMode ?? this.pageSizeMode,
       compression: compression ?? this.compression,
+      driveAutoUpload: driveAutoUpload ?? this.driveAutoUpload,
+      driveWifiOnly: driveWifiOnly ?? this.driveWifiOnly,
     );
   }
 }

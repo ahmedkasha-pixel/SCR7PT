@@ -11,7 +11,7 @@ class AppDatabase {
     if (existing != null) return existing;
     final opened = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -82,6 +82,7 @@ class AppDatabase {
         await db.execute(
           'CREATE INDEX idx_placements_page ON signature_placements(page_id)',
         );
+        await _createDriveLinks(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -103,6 +104,9 @@ class AppDatabase {
             'CREATE INDEX IF NOT EXISTS idx_placements_page ON signature_placements(page_id)',
           );
         }
+        if (oldVersion < 3) {
+          await _createDriveLinks(db);
+        }
       },
     );
     _database = opened;
@@ -113,4 +117,19 @@ class AppDatabase {
     await _database?.close();
     _database = null;
   }
+}
+
+Future<void> _createDriveLinks(Database db) {
+  return db.execute('''
+    CREATE TABLE IF NOT EXISTS drive_links (
+      document_id TEXT PRIMARY KEY,
+      status TEXT NOT NULL,
+      file_ids TEXT NOT NULL,
+      progress REAL NOT NULL,
+      error TEXT,
+      format TEXT NOT NULL,
+      compression TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  ''');
 }

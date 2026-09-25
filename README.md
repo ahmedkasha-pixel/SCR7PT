@@ -23,7 +23,7 @@ lib/
   core/                        name, theme, geometry, image processing, PDF
   data/                        sqflite schema, files, repositories
   features/home|folder|scan|document|settings|share|signature
-  features/upcoming/           phase 3 cloud slot (not implemented)
+  features/drive/              Google Drive sign-in, folder, and upload queue
   l10n/                        Arabic and English strings
 ```
 
@@ -126,6 +126,16 @@ PNGs are written to `build/screenshots/`. Those files are gitignored with the re
 ## Project layout notes
 
 - Application id: `com.docscan.docscan`.
+- Release signing: `android/key.properties` and `android/app/keystore/scr7pt-release.jks`. Every release APK uses this key. Uninstall an older debug-signed build once before installing it.
+- Google client IDs: `lib/core/google_config.dart` only (`webClientIdPlaceholder` and `iosClientIdPlaceholder`, or `--dart-define=GOOGLE_WEB_CLIENT_ID` / `GOOGLE_IOS_CLIENT_ID`). The iOS URL scheme placeholder is in `ios/Runner/Info.plist`.
+
+## Google Drive
+
+Drive uses scope `https://www.googleapis.com/auth/drive.file` (files this app created). There is no backend. Until the Web client ID is pasted into `lib/core/google_config.dart`, Settings shows “Google Drive is not set up yet” and does not call Google.
+
+Enable the Google Drive API. OAuth consent: External, Testing, add your Gmail as a test user, and add the `drive.file` scope. Create an Android OAuth client for `com.docscan.docscan` with the release SHA-1, and a Web client whose ID is `serverClientId`. An iOS client comes later; its reversed ID replaces `YOUR_IOS_CLIENT_ID_PREFIX` in `Info.plist`.
+
+Uploads go to a Drive folder named `SCR7PT`. An app folder becomes a subfolder. Saving again updates the same Drive file. Offline and failed uploads stay queued and retry when the network matches the Wi-Fi toggle. Auto-upload of new documents is off by default.
 - Localization: `l10n.yaml`, `lib/l10n/app_en.arb`, `lib/l10n/app_ar.arb`. Regenerate with `flutter gen-l10n` (also runs on `flutter pub get` because `generate: true`).
 - UI font: IBM Plex Sans Arabic (OFL), in `assets/fonts/`.
 - Theme: Material 3, seed color `#0F6A64`, paper background `#F3F0E8`.

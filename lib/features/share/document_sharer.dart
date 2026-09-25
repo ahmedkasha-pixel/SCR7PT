@@ -10,6 +10,18 @@ import '../../data/models/records.dart';
 import '../../data/repositories/signature_repository.dart';
 import '../../data/storage/file_store.dart';
 
+class PreparedFile {
+  const PreparedFile({
+    required this.bytes,
+    required this.name,
+    required this.mimeType,
+  });
+
+  final Uint8List bytes;
+  final String name;
+  final String mimeType;
+}
+
 class DocumentSharer {
   DocumentSharer({
     required this._files,
@@ -58,12 +70,11 @@ class DocumentSharer {
     );
   }
 
-  Future<void> shareDocument({
+  Future<List<PreparedFile>> prepareFiles({
     required DocumentRecord document,
     required List<PageRecord> pages,
     required ShareFormat format,
     CompressionLevel compression = CompressionLevel.medium,
-    Rect? origin,
   }) async {
     if (pages.isEmpty) {
       throw StateError('empty');
@@ -80,27 +91,44 @@ class DocumentSharer {
     );
     if (format == ShareFormat.pdf) {
       final bytes = await _pdf.build(images);
-      final path = _files.exportPath('$stem.pdf');
-      await _files.writeBytes(path, bytes);
-      await _invoke(
-        ShareParams(
-          files: [XFile(path, mimeType: 'application/pdf', name: '$stem.pdf')],
-          fileNameOverrides: ['$stem.pdf'],
-          title: document.name,
-          sharePositionOrigin: origin,
+      return [
+        PreparedFile(
+          bytes: bytes,
+          name: '$stem.pdf',
+          mimeType: 'application/pdf',
         ),
-      );
-      return;
+      ];
     }
+    return [
+      for (var i = 0; i < images.length; i++)
+        PreparedFile(
+          bytes: images[i],
+          name: images.length == 1 ? '$stem.jpg' : '$stem-${i + 1}.jpg',
+          mimeType: 'image/jpeg',
+        ),
+    ];
+  }
 
+  Future<void> shareDocument({
+    required DocumentRecord document,
+    required List<PageRecord> pages,
+    required ShareFormat format,
+    CompressionLevel compression = CompressionLevel.medium,
+    Rect? origin,
+  }) async {
+    final prepared = await prepareFiles(
+      document: document,
+      pages: pages,
+      format: format,
+      compression: compression,
+    );
     final files = <XFile>[];
     final names = <String>[];
-    for (var i = 0; i < images.length; i++) {
-      final name = images.length == 1 ? '$stem.jpg' : '$stem-${i + 1}.jpg';
-      final path = _files.exportPath(name);
-      await _files.writeBytes(path, images[i]);
-      files.add(XFile(path, mimeType: 'image/jpeg', name: name));
-      names.add(name);
+    for (final file in prepared) {
+      final path = _files.exportPath(file.name);
+      await _files.writeBytes(path, file.bytes);
+      files.add(XFile(path, mimeType: file.mimeType, name: file.name));
+      names.add(file.name);
     }
     await _invoke(
       ShareParams(
