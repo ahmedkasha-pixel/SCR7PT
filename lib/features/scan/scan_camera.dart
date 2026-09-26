@@ -12,6 +12,7 @@ abstract class ScanCamera {
   Future<void> setFlash(bool enabled);
   bool get hasTorch;
   bool get isTorchOn;
+  double? get sensorAspectRatio;
   void startImageStream(void Function(CameraImage image) onAvailable);
   Future<void> stopImageStream();
   Future<void> dispose();
@@ -29,6 +30,18 @@ class LiveScanCamera implements ScanCamera {
   bool get isTorchOn => _isTorchOn;
 
   @override
+  double? get sensorAspectRatio {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return null;
+    final aspect = controller.value.aspectRatio;
+    if (aspect <= 0) return null;
+    // CameraController.value.aspectRatio is width/height of the raw sensor buffer
+    // (landscape orientation, e.g. 4/3 ~ 1.333). In portrait display, we invert:
+    // portrait aspect = height/width = 1 / aspect (e.g. 3/4 = 0.75).
+    return aspect > 1.0 ? 1.0 / aspect : aspect;
+  }
+
+  @override
   Future<ScanCameraStatus> initialize() async {
     try {
       final cameras = await availableCameras();
@@ -37,9 +50,12 @@ class LiveScanCamera implements ScanCamera {
         (camera) => camera.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
+      // Use ResolutionPreset.high (1280x720 or 1080p, consistently 4:3 or 16:9 matching sensor)
+      // to guarantee preview and still-capture share identical framing aspect ratio (4:3)
+      // without sensor cropping divergence seen in ResolutionPreset.max.
       final controller = CameraController(
         back,
-        ResolutionPreset.max,
+        ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
@@ -73,7 +89,33 @@ class LiveScanCamera implements ScanCamera {
     if (controller == null || !controller.value.isInitialized) {
       return const ColoredBox(color: Colors.black);
     }
-    return CameraPreview(controller);
+    // Calculate true portrait aspect ratio:
+    // controller.value.aspectRatio in landscape is width/height (e.g. 4/3 = 1.333).
+    // In portrait, the preview aspect ratio is 1 / aspectRatio (e.g. 3/4 = 0.75).
+    final rawAspect = controller.value.aspectRatio;
+    final portraitAspect = rawAspect > 1.0 ? 1.0 / rawAspect : rawAspect;
+
+    return ClipRect(
+      child: Center(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SizedBox(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              child: FittedBox(
+                fit: BoxFit.cover,
+                clipBehavior: Clip.hardEdge,
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  height: constraints.maxWidth / portraitAspect,
+                  child: CameraPreview(controller),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override

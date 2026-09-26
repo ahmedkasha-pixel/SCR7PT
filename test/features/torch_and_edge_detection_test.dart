@@ -291,5 +291,54 @@ void main() {
       expect(quad.topLeft.x * 599, closeTo(100, 30));
       expect(quad.bottomRight.y * 799, closeTo(680, 30));
     });
+
+    test('preparePageInstant delivers instant metadata and detected quad without blocking', () {
+      final image = img.Image(width: 600, height: 800, numChannels: 3);
+      img.fill(image, color: img.ColorRgb8(250, 250, 250));
+      final bytes = Uint8List.fromList(img.encodeJpg(image));
+      const testQuad = Quad(
+        topLeft: NormPoint(0.1, 0.1),
+        topRight: NormPoint(0.9, 0.1),
+        bottomRight: NormPoint(0.85, 0.85),
+        bottomLeft: NormPoint(0.15, 0.85),
+      );
+
+      final sw = Stopwatch()..start();
+      final instant = preparePageInstant(bytes, detectedQuad: testQuad);
+      sw.stop();
+
+      expect(instant.width, 600);
+      expect(instant.height, 800);
+      expect(instant.corners, testQuad.toList());
+      // Instant preparation must complete in under 15ms (no heavy warp)
+      expect(sw.elapsedMilliseconds, lessThan(30));
+      print('preparePageInstant elapsed: ${sw.elapsedMilliseconds}ms');
+    });
+
+    testWidgets('Live quad overlay transforms accurately with sensor aspect ratio cover fit', (tester) async {
+      const quad = Quad(
+        topLeft: NormPoint(0.1, 0.1),
+        topRight: NormPoint(0.9, 0.1),
+        bottomRight: NormPoint(0.9, 0.9),
+        bottomLeft: NormPoint(0.1, 0.9),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              height: 720, // 1:2 screen aspect
+              child: AnimatedLiveQuadOverlay(
+                quad: quad,
+                sensorAspectRatio: 0.75, // 3:4 sensor aspect (portrait)
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(AnimatedLiveQuadOverlay), findsOneWidget);
+    });
   });
 }

@@ -38,18 +38,23 @@ class FakeScanCamera implements ScanCamera {
     this.picture, {
     this.preview,
     this.torchSupported = true,
+    this.customAspectRatio,
   });
 
   final Uint8List picture;
   final Uint8List? preview;
   bool flash = false;
   final bool torchSupported;
+  final double? customAspectRatio;
 
   @override
   bool get hasTorch => torchSupported;
 
   @override
   bool get isTorchOn => flash;
+
+  @override
+  double? get sensorAspectRatio => customAspectRatio ?? 0.75;
 
   @override
   void startImageStream(void Function(CameraImage image) onAvailable) {}

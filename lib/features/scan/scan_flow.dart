@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 
 import '../../app/app_scope.dart';
@@ -36,6 +37,7 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
   bool _flash = false;
   bool _manual = false;
   bool _forcePop = false;
+  bool _isCapturing = false;
 
   // Real-time edge detection state
   Quad? _liveQuad;
@@ -168,22 +170,49 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
 
   Future<void> _capture() async {
     final camera = _camera;
-    if (camera == null) return;
+    if (camera == null || _isCapturing) return;
+    setState(() => _isCapturing = true);
+
+    // Immediate tactile feedback
     try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
+
+    final swTotal = Stopwatch()..start();
+    try {
+      // 1. Immediately stop the stream so CPU is 100% free for shutter
       await camera.stopImageStream();
       final capturedQuad = _liveQuad;
+
+      // 2. Take picture at native sensor speed
+      final swTake = Stopwatch()..start();
       final bytes = await camera.takePicture();
+      swTake.stop();
+
+      // 3. Instant session enqueue - lands in crop view without blocking on heavy warp
+      final swAdd = Stopwatch()..start();
       await _session.addBytes(bytes, manual: _manual, detectedQuad: capturedQuad);
+      swAdd.stop();
+
+      swTotal.stop();
+      debugPrint(
+        '[TIMING] capture total: ${swTotal.elapsedMilliseconds}ms '
+        '(takePicture: ${swTake.elapsedMilliseconds}ms, addBytes: ${swAdd.elapsedMilliseconds}ms)',
+      );
+
       if (!mounted) return;
       await _camera?.dispose();
       setState(() {
         _camera = null;
         _editing = true;
+        _isCapturing = false;
         _liveQuad = null;
       });
     } on StateError {
+      setState(() => _isCapturing = false);
       _showLimit();
     } catch (_) {
+      setState(() => _isCapturing = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).captureFailed)),
@@ -383,6 +412,7 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
               hasTorch: _camera?.hasTorch ?? false,
               manual: _manual,
               detectedQuad: _liveQuad,
+              isCapturing: _isCapturing,
               pageCount: _session.pages.length,
               onCapture: _capture,
               onGallery: _import,

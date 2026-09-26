@@ -66,18 +66,16 @@ PreparedPage preparePage(Uint8List bytes, {Quad? detectedQuad}) {
 }
 
 PreparedPage preparePageRequest(PrepareRequest request) {
+  // Fast decode for JPEG orientation/dimensions
   final decoded = _decodeFull(request.bytes);
-  // Redetect on full-res image; if detection finds a usable quad, prefer it,
-  // or fall back to the live detected quad if provided and usable, or detectQuad.
-  final fullDetected = tryDetectQuad(decoded);
   final Quad quad;
-  if (fullDetected != null && fullDetected.isUsable) {
-    quad = fullDetected;
-  } else if (request.detectedQuad != null) {
+  if (request.detectedQuad != null) {
+    // When live-detected quad is provided from viewfinder tracking,
+    // trust it immediately for instant transition.
     final live = Quad.fromList(request.detectedQuad!);
-    quad = live.isUsable ? live : Quad.standard;
+    quad = live.isUsable ? live : tryDetectQuad(decoded) ?? Quad.standard;
   } else {
-    quad = Quad.standard;
+    quad = tryDetectQuad(decoded) ?? Quad.standard;
   }
 
   final mode = PageSizeMode.values.asNameMap()[request.pageSizeMode] ??
@@ -99,6 +97,27 @@ PreparedPage preparePageRequest(PrepareRequest request) {
     corners: quad.toList(),
     width: decoded.width,
     height: decoded.height,
+  );
+}
+
+/// Instant preparation for captured photo: extracts orientation-baked width/height,
+/// uses detected quad directly, and creates initial thumbnail preview instantly without
+/// heavy full-resolution warp.
+PreparedPage preparePageInstant(Uint8List bytes, {Quad? detectedQuad}) {
+  final info = img.findDecoderForData(bytes)?.startDecode(bytes);
+  int width = info?.width ?? 1200;
+  int height = info?.height ?? 1600;
+
+  final quad = (detectedQuad != null && detectedQuad.isUsable)
+      ? detectedQuad
+      : Quad.standard;
+
+  return PreparedPage(
+    originalJpeg: bytes,
+    previewJpeg: bytes,
+    corners: quad.toList(),
+    width: width,
+    height: height,
   );
 }
 

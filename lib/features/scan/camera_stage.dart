@@ -23,6 +23,7 @@ class CameraStage extends StatelessWidget {
     required this.onClose,
     required this.onManualChanged,
     this.detectedQuad,
+    this.isCapturing = false,
   });
 
   final ScanCamera? camera;
@@ -38,6 +39,7 @@ class CameraStage extends StatelessWidget {
   final VoidCallback onClose;
   final ValueChanged<bool> onManualChanged;
   final Quad? detectedQuad;
+  final bool isCapturing;
 
   @override
   Widget build(BuildContext context) {
@@ -55,10 +57,21 @@ class CameraStage extends StatelessWidget {
             _Message(status: status, onGallery: onGallery, onRetry: onRetry),
           if (ready && liveQuad != null)
             IgnorePointer(
-              child: AnimatedLiveQuadOverlay(quad: liveQuad),
+              child: AnimatedLiveQuadOverlay(
+                quad: liveQuad,
+                sensorAspectRatio: camera?.sensorAspectRatio,
+              ),
             )
           else
             const IgnorePointer(child: _CropFrame()),
+          if (isCapturing)
+            const IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: 0.8,
+                duration: Duration(milliseconds: 60),
+                child: ColoredBox(color: Colors.white),
+              ),
+            ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
@@ -97,14 +110,14 @@ class CameraStage extends StatelessWidget {
                       ),
                       _Shutter(
                         key: const Key('shutter-button'),
-                        onPressed: ready ? onCapture : null,
+                        onPressed: (ready && !isCapturing) ? onCapture : null,
                       ),
                       if (hasTorch)
                         _RoundAction(
                           key: const Key('flash-toggle-button'),
                           icon: flashOn ? Icons.flashlight_on : Icons.flashlight_off,
                           label: l10n.flash,
-                          onPressed: ready ? onFlash : null,
+                          onPressed: (ready && !isCapturing) ? onFlash : null,
                         )
                       else
                         const SizedBox(width: 56, height: 56),
@@ -121,9 +134,14 @@ class CameraStage extends StatelessWidget {
 }
 
 class AnimatedLiveQuadOverlay extends StatelessWidget {
-  const AnimatedLiveQuadOverlay({super.key, required this.quad});
+  const AnimatedLiveQuadOverlay({
+    super.key,
+    required this.quad,
+    this.sensorAspectRatio,
+  });
 
   final Quad quad;
+  final double? sensorAspectRatio;
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +151,10 @@ class AnimatedLiveQuadOverlay extends StatelessWidget {
       curve: Curves.easeOut,
       builder: (context, animatedQuad, _) {
         return CustomPaint(
-          painter: _LiveQuadPainter(quad: animatedQuad),
+          painter: _LiveQuadPainter(
+            quad: animatedQuad,
+            sensorAspectRatio: sensorAspectRatio,
+          ),
         );
       },
     );
@@ -151,13 +172,50 @@ class _QuadTween extends Tween<Quad> {
 }
 
 class _LiveQuadPainter extends CustomPainter {
-  const _LiveQuadPainter({required this.quad});
+  const _LiveQuadPainter({
+    required this.quad,
+    this.sensorAspectRatio,
+  });
 
   final Quad quad;
+  final double? sensorAspectRatio;
 
   @override
   void paint(Canvas canvas, Size size) {
-    Offset toScreen(NormPoint p) => Offset(p.x * size.width, p.y * size.height);
+    // When the camera preview uses BoxFit.cover with sensorAspectRatio (width/height < 1.0 in portrait),
+    // calculate the rendered destination rect inside `size` so the quad coordinates (normalized 0..1 to sensor)
+    // align pixel-perfectly with what is displayed on screen:
+    final double renderedW;
+    final double renderedH;
+    final double offsetX;
+    final double offsetY;
+
+    if (sensorAspectRatio != null && sensorAspectRatio! > 0) {
+      final screenAspect = size.width / size.height;
+      if (screenAspect > sensorAspectRatio!) {
+        // Screen is wider than sensor: width fits, height is cropped
+        renderedW = size.width;
+        renderedH = size.width / sensorAspectRatio!;
+        offsetX = 0;
+        offsetY = (size.height - renderedH) / 2.0;
+      } else {
+        // Screen is taller than sensor: height fits, width is cropped
+        renderedH = size.height;
+        renderedW = size.height * sensorAspectRatio!;
+        offsetX = (size.width - renderedW) / 2.0;
+        offsetY = 0;
+      }
+    } else {
+      renderedW = size.width;
+      renderedH = size.height;
+      offsetX = 0;
+      offsetY = 0;
+    }
+
+    Offset toScreen(NormPoint p) => Offset(
+      offsetX + p.x * renderedW,
+      offsetY + p.y * renderedH,
+    );
 
     final tl = toScreen(quad.topLeft);
     final tr = toScreen(quad.topRight);
@@ -199,7 +257,8 @@ class _LiveQuadPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LiveQuadPainter oldDelegate) =>
-      oldDelegate.quad != quad;
+      oldDelegate.quad != quad ||
+      oldDelegate.sensorAspectRatio != sensorAspectRatio;
 }
 
 class _CountPill extends StatelessWidget {

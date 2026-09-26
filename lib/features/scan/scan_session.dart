@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../core/app_config.dart';
@@ -23,8 +25,8 @@ class EditablePage {
   final Uint8List originalJpeg;
   Uint8List previewJpeg;
   Quad corners;
-  final int width;
-  final int height;
+  int width;
+  int height;
   PageFilter filter;
   bool cropping;
   bool stale;
@@ -55,27 +57,49 @@ class ScanSession extends ChangeNotifier {
     if (pages.length >= AppConfig.maxPagesPerDocument) {
       throw StateError('page-limit');
     }
-    await _guard(() async {
-      final prepared = await compute(
+    // Fast path: use preparePageInstant so the user lands on the crop-adjust
+    // screen with zero delay (no blocking heavy full-resolution warp).
+    final pageId = '${DateTime.now().microsecondsSinceEpoch}_${_ids++}';
+    final initial = preparePageInstant(
+      bytes,
+      detectedQuad: manual ? null : detectedQuad,
+    );
+
+    final editable = EditablePage(
+      id: pageId,
+      originalJpeg: initial.originalJpeg,
+      previewJpeg: initial.previewJpeg,
+      corners: Quad.fromList(initial.corners),
+      width: initial.width,
+      height: initial.height,
+      cropping: true,
+      stale: false,
+    );
+
+    pages.add(editable);
+    index = pages.length - 1;
+    notifyListeners();
+
+    // In background isolate, generate enhanced preview without blocking UI navigation
+    unawaited(
+      compute(
         preparePageRequest,
         PrepareRequest(
           bytes,
           pageSizeMode.name,
           detectedQuad: manual ? null : detectedQuad?.toList(),
         ),
-      );
-      pages.add(
-        EditablePage(
-          id: '${DateTime.now().microsecondsSinceEpoch}_${_ids++}',
-          originalJpeg: prepared.originalJpeg,
-          previewJpeg: prepared.previewJpeg,
-          corners: manual ? Quad.standard : Quad.fromList(prepared.corners),
-          width: prepared.width,
-          height: prepared.height,
-        ),
-      );
-      index = pages.length - 1;
-    });
+      ).then((refined) {
+        editable.previewJpeg = refined.previewJpeg;
+        editable.width = refined.width;
+        editable.height = refined.height;
+        // Keep user-edited corners if modified during adjustment
+        if (!editable.stale) {
+          editable.corners = Quad.fromList(refined.corners);
+        }
+        notifyListeners();
+      }).catchError((_) {}),
+    );
   }
 
   Future<void> setFilter(PageFilter filter) async {
