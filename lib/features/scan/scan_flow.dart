@@ -1,12 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
 
 import '../../app/app_scope.dart';
-import '../../core/app_config.dart';
 import '../../core/geometry/quad.dart';
 import '../../core/naming/document_name.dart';
 import '../../core/processing/frame_quad.dart';
@@ -18,17 +19,33 @@ import 'page_editor.dart';
 import 'scan_camera.dart';
 import 'scan_session.dart';
 
+/// A saved document that a scan session appends new pages to.
+class ScanAppendTarget {
+  const ScanAppendTarget({required this.document, required this.existingPages});
+
+  final DocumentRecord document;
+
+  /// How many pages the document already has (counts toward the limit).
+  final int existingPages;
+}
+
+/// Camera → crop/edit → save. With [appendTo] set, the finished pages are
+/// added to that saved document and the route pops with the number added.
 class ScanFlow extends StatefulWidget {
-  const ScanFlow({super.key, this.folderId});
+  const ScanFlow({super.key, this.folderId, this.appendTo});
 
   final String? folderId;
+  final ScanAppendTarget? appendTo;
 
   @override
   State<ScanFlow> createState() => _ScanFlowState();
 }
 
 class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
-  late final ScanSession _session = ScanSession(folderId: widget.folderId);
+  late final ScanSession _session = ScanSession(
+    folderId: widget.folderId,
+    existingPages: widget.appendTo?.existingPages ?? 0,
+  );
   ScanCamera? _camera;
   ScanCameraStatus? _status;
   bool _editing = false;
@@ -100,7 +117,7 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
     if (!mounted) return;
     final camera = createCamera();
     final status = await camera.initialize();
-    if (!mounted) {
+    if (!mounted || _editing) {
       await camera.dispose();
       return;
     }
@@ -270,9 +287,11 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
   void _showLimit() {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.pageLimit(AppConfig.maxPagesPerDocument))),
-    );
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(l10n.pageLimitReached(_session.maxPages))),
+      );
   }
 
   Future<void> _toggleFlash() async {
@@ -281,14 +300,51 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
     if (mounted) setState(() => _flash = next);
   }
 
+  /// "Scan another page": reopen the camera; the next capture is appended.
   Future<void> _addPage() async {
+    if (!_session.canAddPage) {
+      _showLimit();
+      return;
+    }
     setState(() => _editing = false);
     await _openCamera();
+  }
+
+  /// Leaves the camera without capturing and returns to the pages already
+  /// scanned (instead of offering to discard the whole scan).
+  Future<void> _backToPages() async {
+    final camera = _camera;
+    if (camera != null) {
+      if (_flash) await camera.setFlash(false);
+      await camera.stopImageStream();
+      await camera.dispose();
+    }
+    if (!mounted) return;
+    setState(() {
+      _camera = null;
+      _editing = true;
+      _flash = false;
+      _isCapturing = false;
+      _liveQuad = null;
+    });
+  }
+
+  void _closeCamera() {
+    if (_session.pages.isNotEmpty) {
+      _backToPages();
+    } else {
+      _maybeLeave();
+    }
   }
 
   Future<void> _finish() async {
     final l10n = AppLocalizations.of(context);
     if (_session.pages.isEmpty) return;
+    final target = widget.appendTo;
+    if (target != null) {
+      await _finishAppend(target);
+      return;
+    }
     final saved = await _askToSave();
     if (saved == null || !mounted) return;
     final documents = AppScope.of(context).documents;
@@ -316,6 +372,54 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
       navigator.pop();
       navigator.pop();
       await navigator.pushNamed('/document', arguments: document);
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.couldNotSave)));
+    }
+  }
+
+  /// Adds the new pages to the end of [target] and pops with their count.
+  Future<void> _finishAppend(ScanAppendTarget target) async {
+    final l10n = AppLocalizations.of(context);
+    final documents = AppScope.of(context).documents;
+    final navigator = Navigator.of(context);
+    unawaited(
+      showBusyDialog(context, l10n.addingToDocument(target.document.name)),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    try {
+      // Match the size of the pages already in the document so the PDF
+      // stays uniform.
+      final existing = await documents.pagesFor(target.document.id);
+      if (existing.isNotEmpty) {
+        final bytes = await File(existing.first.processedPath).readAsBytes();
+        final info = img.findDecoderForData(bytes)?.startDecode(bytes);
+        if (info != null && info.width > 0 && info.height > 0) {
+          _session.forceWidth = info.width;
+          _session.forceHeight = info.height;
+        }
+      }
+      await _session.commitPending();
+      if (!mounted) return;
+      final added = await documents.appendPages(target.document.id, [
+        for (final page in _session.pages)
+          NewPage(
+            id: page.id,
+            originalJpeg: page.originalJpeg,
+            processedJpeg: page.previewJpeg,
+            filter: page.filter,
+            corners: page.corners,
+          ),
+      ]);
+      if (!mounted) return;
+      navigator.pop();
+      navigator.pop(added.length);
+    } on StateError {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      _showLimit();
     } catch (_) {
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
@@ -417,13 +521,28 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final target = widget.appendTo;
     return PopScope(
       canPop: _forcePop,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _maybeLeave();
+        if (didPop) return;
+        if (!_editing && _session.pages.isNotEmpty) {
+          _backToPages();
+        } else {
+          _maybeLeave();
+        }
       },
       child: _editing
-          ? PageEditor(session: _session, onAddPage: _addPage, onDone: _finish)
+          ? PageEditor(
+              session: _session,
+              onAddPage: _addPage,
+              onDone: _finish,
+              doneLabel: target == null ? null : l10n.addToDocument,
+              banner: target == null
+                  ? null
+                  : l10n.addingToDocument(target.document.name),
+            )
           : CameraStage(
               camera: _camera,
               status: _status,
@@ -432,12 +551,13 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
               manual: _manual,
               detectedQuad: _liveQuad,
               isCapturing: _isCapturing,
-              pageCount: _session.pages.length,
+              pageCount: _session.totalPages,
+              closeLabel: _session.pages.isNotEmpty ? l10n.backToPages : null,
               onCapture: _capture,
               onGallery: _import,
               onFlash: _toggleFlash,
               onRetry: _openCamera,
-              onClose: _maybeLeave,
+              onClose: _closeCamera,
               onManualChanged: (manual) => setState(() => _manual = manual),
             ),
     );

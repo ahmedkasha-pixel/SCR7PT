@@ -33,10 +33,27 @@ class EditablePage {
 }
 
 class ScanSession extends ChangeNotifier {
-  ScanSession({this.folderId, this.pageSizeMode = PageSizeMode.auto});
+  ScanSession({
+    this.folderId,
+    this.pageSizeMode = PageSizeMode.auto,
+    this.existingPages = 0,
+    this.maxPages = AppConfig.maxPagesPerDocument,
+  });
 
   String? folderId;
   PageSizeMode pageSizeMode;
+
+  /// Pages already saved in the document this session appends to.
+  final int existingPages;
+
+  /// Page limit for the whole document (saved pages plus this session).
+  final int maxPages;
+
+  /// Saved pages plus the pages captured in this session.
+  int get totalPages => existingPages + pages.length;
+
+  /// Whether one more page still fits in the document.
+  bool get canAddPage => totalPages < maxPages;
 
   /// When set, every page is rendered at this size (one document, one size).
   int? forceWidth;
@@ -54,7 +71,7 @@ class ScanSession extends ChangeNotifier {
     bool manual = false,
     Quad? detectedQuad,
   }) async {
-    if (pages.length >= AppConfig.maxPagesPerDocument) {
+    if (!canAddPage) {
       throw StateError('page-limit');
     }
     // Fast path: use preparePageInstant so the user lands on the crop-adjust

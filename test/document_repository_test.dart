@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:docscan/core/app_config.dart';
 import 'package:docscan/core/geometry/quad.dart';
 import 'package:docscan/data/db/app_database.dart';
 import 'package:docscan/data/models/records.dart';
@@ -138,6 +139,59 @@ void main() {
     expect(
       repository.createDocument(name: 'empty', pages: const []),
       throwsArgumentError,
+    );
+  });
+
+  test('appendPages adds pages to the end of a saved document', () async {
+    final document = await repository.createDocument(
+      name: 'Lease',
+      folderId: null,
+      pages: [samplePage('a1'), samplePage('a2')],
+    );
+    final ready = <List<PageRecord>>[];
+    final changed = <String>[];
+    repository.onPagesReady = ready.add;
+    repository.onDocumentChanged = changed.add;
+
+    final added = await repository.appendPages(document.id, [
+      samplePage('a3'),
+      samplePage('a4'),
+    ]);
+
+    expect(added.map((page) => page.id), ['a3', 'a4']);
+    expect(added.map((page) => page.position), [2, 3]);
+    final pages = await repository.pagesFor(document.id);
+    expect(pages.map((page) => page.id), ['a1', 'a2', 'a3', 'a4']);
+    expect(File(pages.last.processedPath).existsSync(), isTrue);
+    expect(ready.single.map((page) => page.id), ['a3', 'a4']);
+    expect(changed, [document.id]);
+    expect((await repository.documentById(document.id))!.pageCount, 4);
+  });
+
+  test('appendPages refuses to go past the page limit', () async {
+    final document = await repository.createDocument(
+      name: 'Full',
+      folderId: null,
+      pages: [
+        for (var i = 0; i < AppConfig.maxPagesPerDocument; i++)
+          samplePage('f$i'),
+      ],
+    );
+    await expectLater(
+      repository.appendPages(document.id, [samplePage('extra')]),
+      throwsStateError,
+    );
+    final pages = await repository.pagesFor(document.id);
+    expect(pages, hasLength(AppConfig.maxPagesPerDocument));
+    expect(
+      Directory('${directory.path}/files')
+          .listSync(recursive: true)
+          .where((f) => f.path.contains('extra')),
+      isEmpty,
+    );
+    await expectLater(
+      repository.appendPages('missing', [samplePage('x')]),
+      throwsStateError,
     );
   });
 }

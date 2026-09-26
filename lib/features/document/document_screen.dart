@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
+import '../../core/app_config.dart';
 import '../../core/processing/compress.dart';
 import '../../core/processing/signature_stamp.dart';
 import '../../data/models/records.dart';
@@ -13,6 +14,7 @@ import '../../widgets/dialogs.dart';
 import '../../widgets/share_sheet.dart';
 import '../drive/drive_models.dart';
 import '../drive/drive_status_badge.dart';
+import '../scan/scan_flow.dart';
 import '../home/home_screen.dart';
 import '../signature/signature_place_screen.dart';
 import '../signature/signatures_screen.dart';
@@ -90,7 +92,8 @@ class _DocumentScreenState extends State<DocumentScreen> {
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _load() async {
+  /// Reloads the document. [focus] selects a page (e.g. the first new page).
+  Future<void> _load({int? focus}) async {
     final scope = AppScope.of(context);
     final document = await scope.documents.documentById(widget.document.id);
     final pages = await scope.documents.pagesFor(widget.document.id);
@@ -100,7 +103,9 @@ class _DocumentScreenState extends State<DocumentScreen> {
       return;
     }
     _rememberPages(pages);
-    final start = _clampedPage(pages.length);
+    final start = focus == null || pages.isEmpty
+        ? _clampedPage(pages.length)
+        : focus.clamp(0, pages.length - 1);
     setState(() {
       _document = document;
       _pages = pages;
@@ -224,8 +229,14 @@ class _DocumentScreenState extends State<DocumentScreen> {
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    itemCount: _pages.length,
+                    itemCount: _pages.length + 1,
                     itemBuilder: (context, index) {
+                      if (index == _pages.length) {
+                        return _AddPageTile(
+                          tooltip: l10n.scanMorePages,
+                          onTap: _scanMore,
+                        );
+                      }
                       final selected = index == _index;
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 8),
@@ -266,11 +277,34 @@ class _DocumentScreenState extends State<DocumentScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        OutlinedButton.icon(
-                          key: const Key('document-save-drive'),
-                          onPressed: _saveToDrive,
-                          icon: const Icon(Icons.cloud_upload_outlined),
-                          label: Text(l10n.driveSave),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton.tonalIcon(
+                                key: const Key('document-add-pages'),
+                                onPressed: _scanMore,
+                                icon: const Icon(Icons.add_a_photo_outlined),
+                                label: Text(
+                                  l10n.scanMorePages,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                key: const Key('document-save-drive'),
+                                onPressed: _saveToDrive,
+                                icon: const Icon(Icons.cloud_upload_outlined),
+                                label: Text(
+                                  l10n.driveSave,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -463,6 +497,42 @@ class _DocumentScreenState extends State<DocumentScreen> {
     }
   }
 
+  /// Opens the camera to scan more pages onto the end of this document.
+  Future<void> _scanMore() async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    if (_pages.length >= AppConfig.maxPagesPerDocument) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(l10n.pageLimitReached(AppConfig.maxPagesPerDocument)),
+          ),
+        );
+      return;
+    }
+    final before = _pages.length;
+    final added = await Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScanFlow(
+          folderId: _document.folderId,
+          appendTo: ScanAppendTarget(
+            document: _document,
+            existingPages: before,
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (added == null || added <= 0) return;
+    await _load(focus: before);
+    if (!mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.pagesAdded(added))));
+  }
+
   Future<void> _edit() async {
     final removed = await Navigator.push<bool>(
       context,
@@ -565,5 +635,36 @@ class _DocumentScreenState extends State<DocumentScreen> {
     await AppScope.of(context).documents
         .reorderPages(_document.id, [for (final page in ordered) page.id]);
     await _load();
+  }
+}
+
+/// Last tile of the thumbnail strip: scan more pages into this document.
+class _AddPageTile extends StatelessWidget {
+  const _AddPageTile({required this.tooltip, required this.onTap});
+
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        key: const Key('document-add-page-tile'),
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          width: 52,
+          height: 68,
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: scheme.primary.withValues(alpha: 0.45)),
+          ),
+          child: Icon(Icons.add, color: scheme.primary),
+        ),
+      ),
+    );
   }
 }

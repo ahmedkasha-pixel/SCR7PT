@@ -213,5 +213,34 @@
   "driveStatusFailed": "Upload failed",
   "driveRetry": "Retry",
   "driveQueued": "Added to the upload queue",
-  "driveNeedsSignIn": "Sign in from Settings before saving to Drive"
+  "driveNeedsSignIn": "Sign in from Settings before saving to Drive",
+  "scanAnother": "Scan another page",
+  "backToPages": "Back to pages",
+  "scanMorePages": "Scan more pages",
+  "addToDocument": "Add to document",
+  "addingToDocument": "Adding pages to “{name}”",
+  "@addingToDocument": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "pageCountOfMax": "{count} of {max} pages",
+  "@pageCountOfMax": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "max": {"type": "int"}
+    }
+  },
+  "pageLimitReached": "This document is full ({max} pages). Save it, then start a new document for more pages.",
+  "@pageLimitReached": {
+    "placeholders": {
+      "max": {"type": "int"}
+    }
+  },
+  "pagesAdded": "{count, plural, =1{1 page added} other{{count} pages added}}",
+  "@pagesAdded": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  }
 }

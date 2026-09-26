@@ -565,4 +565,45 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get driveNeedsSignIn => 'سجّل الدخول من الإعدادات قبل الحفظ في Drive';
+
+  @override
+  String get scanAnother => 'مسح صفحة أخرى';
+
+  @override
+  String get backToPages => 'العودة إلى الصفحات';
+
+  @override
+  String get scanMorePages => 'إضافة صفحات';
+
+  @override
+  String get addToDocument => 'إضافة إلى المستند';
+
+  @override
+  String addingToDocument(String name) {
+    return 'إضافة صفحات إلى «$name»';
+  }
+
+  @override
+  String pageCountOfMax(int count, int max) {
+    return '$count من $max صفحة';
+  }
+
+  @override
+  String pageLimitReached(int max) {
+    return 'اكتمل هذا المستند ($max صفحة). احفظه ثم ابدأ مستندًا جديدًا لإضافة المزيد.';
+  }
+
+  @override
+  String pagesAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'أُضيفت $count صفحة',
+      many: 'أُضيفت $count صفحة',
+      few: 'أُضيفت $count صفحات',
+      two: 'أُضيفت صفحتان',
+      one: 'أُضيفت صفحة واحدة',
+    );
+    return '$_temp0';
+  }
 }

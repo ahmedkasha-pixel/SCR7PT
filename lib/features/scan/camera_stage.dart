@@ -24,6 +24,7 @@ class CameraStage extends StatelessWidget {
     required this.onManualChanged,
     this.detectedQuad,
     this.isCapturing = false,
+    this.closeLabel,
   });
 
   final ScanCamera? camera;
@@ -40,6 +41,9 @@ class CameraStage extends StatelessWidget {
   final ValueChanged<bool> onManualChanged;
   final Quad? detectedQuad;
   final bool isCapturing;
+
+  /// Label of the top-left button; defaults to Cancel.
+  final String? closeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +87,7 @@ class CameraStage extends StatelessWidget {
                         key: const Key('camera-close'),
                         onPressed: onClose,
                         child: Text(
-                          l10n.cancel,
+                          closeLabel ?? l10n.cancel,
                           style: AppTheme.text(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,

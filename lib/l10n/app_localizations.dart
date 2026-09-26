@@ -1099,6 +1099,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in from Settings before saving to Drive'**
   String get driveNeedsSignIn;
+
+  /// No description provided for @scanAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan another page'**
+  String get scanAnother;
+
+  /// No description provided for @backToPages.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to pages'**
+  String get backToPages;
+
+  /// No description provided for @scanMorePages.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan more pages'**
+  String get scanMorePages;
+
+  /// No description provided for @addToDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to document'**
+  String get addToDocument;
+
+  /// No description provided for @addingToDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Adding pages to “{name}”'**
+  String addingToDocument(String name);
+
+  /// No description provided for @pageCountOfMax.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {max} pages'**
+  String pageCountOfMax(int count, int max);
+
+  /// No description provided for @pageLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'This document is full ({max} pages). Save it, then start a new document for more pages.'**
+  String pageLimitReached(int max);
+
+  /// No description provided for @pagesAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 page added} other{{count} pages added}}'**
+  String pagesAdded(int count);
 }
 
 class _AppLocalizationsDelegate

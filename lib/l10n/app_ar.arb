@@ -182,5 +182,13 @@
   "driveStatusFailed": "فشل الرفع",
   "driveRetry": "إعادة المحاولة",
   "driveQueued": "أُضيف إلى قائمة الرفع",
-  "driveNeedsSignIn": "سجّل الدخول من الإعدادات قبل الحفظ في Drive"
+  "driveNeedsSignIn": "سجّل الدخول من الإعدادات قبل الحفظ في Drive",
+  "scanAnother": "مسح صفحة أخرى",
+  "backToPages": "العودة إلى الصفحات",
+  "scanMorePages": "إضافة صفحات",
+  "addToDocument": "إضافة إلى المستند",
+  "addingToDocument": "إضافة صفحات إلى «{name}»",
+  "pageCountOfMax": "{count} من {max} صفحة",
+  "pageLimitReached": "اكتمل هذا المستند ({max} صفحة). احفظه ثم ابدأ مستندًا جديدًا لإضافة المزيد.",
+  "pagesAdded": "{count, plural, =1{أُضيفت صفحة واحدة} =2{أُضيفت صفحتان} few{أُضيفت {count} صفحات} many{أُضيفت {count} صفحة} other{أُضيفت {count} صفحة}}"
 }

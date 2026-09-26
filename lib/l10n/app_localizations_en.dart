@@ -563,4 +563,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get driveNeedsSignIn => 'Sign in from Settings before saving to Drive';
+
+  @override
+  String get scanAnother => 'Scan another page';
+
+  @override
+  String get backToPages => 'Back to pages';
+
+  @override
+  String get scanMorePages => 'Scan more pages';
+
+  @override
+  String get addToDocument => 'Add to document';
+
+  @override
+  String addingToDocument(String name) {
+    return 'Adding pages to “$name”';
+  }
+
+  @override
+  String pageCountOfMax(int count, int max) {
+    return '$count of $max pages';
+  }
+
+  @override
+  String pageLimitReached(int max) {
+    return 'This document is full ($max pages). Save it, then start a new document for more pages.';
+  }
+
+  @override
+  String pagesAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pages added',
+      one: '1 page added',
+    );
+    return '$_temp0';
+  }
 }

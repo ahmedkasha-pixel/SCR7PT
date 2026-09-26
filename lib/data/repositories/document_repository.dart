@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../core/app_config.dart';
 import '../../core/geometry/quad.dart';
 import '../../core/search/arabic_normalize.dart';
 import '../../core/search/content_search.dart';
@@ -200,6 +201,77 @@ class DocumentRepository {
     onPagesReady?.call(storedPages);
     _changed(id);
     return saved!;
+  }
+
+  /// Adds [pages] after the last page of an existing document.
+  ///
+  /// Throws a [StateError] when the document is gone or when the result
+  /// would exceed [AppConfig.maxPagesPerDocument]. Returns the new pages.
+  Future<List<PageRecord>> appendPages(
+    String documentId,
+    List<NewPage> pages,
+  ) async {
+    if (pages.isEmpty) return const [];
+    final db = await _database.database;
+    final document = await documentById(documentId);
+    if (document == null) {
+      throw StateError('Document not found.');
+    }
+    final existing = await db.query(
+      'pages',
+      columns: ['id'],
+      where: 'document_id = ?',
+      whereArgs: [documentId],
+    );
+    if (existing.length + pages.length > AppConfig.maxPagesPerDocument) {
+      throw StateError('page-limit');
+    }
+    final now = _clock();
+    final written = <String>[];
+    try {
+      for (final page in pages) {
+        final original = _files.originalPath(documentId, page.id);
+        final processed = _files.processedPath(documentId, page.id);
+        await _files.writeBytes(original, page.originalJpeg);
+        written.add(original);
+        await _files.writeBytes(processed, page.processedJpeg);
+        written.add(processed);
+      }
+      await db.transaction((txn) async {
+        for (var index = 0; index < pages.length; index++) {
+          final page = pages[index];
+          await txn.insert('pages', {
+            'id': page.id,
+            'document_id': documentId,
+            'position': existing.length + index,
+            'original_path': _files.originalPath(documentId, page.id),
+            'processed_path': _files.processedPath(documentId, page.id),
+            'filter': page.filter.name,
+            'corners': page.corners.toJson(),
+            'created_at': now.millisecondsSinceEpoch,
+          });
+        }
+        await txn.update(
+          'documents',
+          {'updated_at': now.millisecondsSinceEpoch},
+          where: 'id = ?',
+          whereArgs: [documentId],
+        );
+      });
+    } catch (error) {
+      for (final path in written) {
+        await _files.deleteFile(path);
+      }
+      rethrow;
+    }
+    final ids = {for (final page in pages) page.id};
+    final added = [
+      for (final page in await pagesFor(documentId))
+        if (ids.contains(page.id)) page,
+    ];
+    onPagesReady?.call(added);
+    _changed(documentId);
+    return added;
   }
 
   Future<void> renameDocument(String id, String name) async {
