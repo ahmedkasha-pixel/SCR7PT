@@ -7,7 +7,7 @@ import '../app_config.dart';
 import '../geometry/page_aspect.dart';
 import '../geometry/quad.dart';
 import '../../data/models/records.dart';
-import 'edge_detector.dart';
+import 'edge_detection.dart';
 import 'enhance.dart';
 
 /// Result of preparing a captured or imported photo for editing.
@@ -69,14 +69,19 @@ PreparedPage preparePage(Uint8List bytes, {Quad? detectedQuad}) {
 PreparedPage preparePageRequest(PrepareRequest request) {
   // Fast decode for JPEG orientation/dimensions
   final decoded = _decodeFull(request.bytes);
+  final live = request.detectedQuad == null
+      ? null
+      : Quad.fromList(request.detectedQuad!);
+  final liveUsable = live != null && live.isUsable ? live : null;
   final Quad quad;
-  if (request.detectedQuad != null) {
-    // When live-detected quad is provided from viewfinder tracking,
-    // trust it immediately for instant transition.
-    final live = Quad.fromList(request.detectedQuad!);
-    quad = live.isUsable ? live : tryDetectQuad(decoded) ?? Quad.standard;
+  if (liveUsable != null && !EdgeDetection.openCvAvailable) {
+    // Pure-Dart fallback: trust the viewfinder quad as before.
+    quad = liveUsable;
   } else {
-    quad = tryDetectQuad(decoded) ?? Quad.standard;
+    // The crop screen already shows the live quad (preparePageInstant).
+    // Here the captured photo itself is detected with the OpenCV method at
+    // its tuned 1024 px size; the live quad is the fallback.
+    quad = tryDetectQuad(decoded) ?? liveUsable ?? Quad.standard;
   }
 
   final mode = PageSizeMode.values.asNameMap()[request.pageSizeMode] ??
@@ -214,8 +219,11 @@ Quad detectQuad(img.Image source) {
 }
 
 /// Finds a document quadrilateral if confident, otherwise returns null.
+///
+/// Uses the OpenCV detector and falls back to the pure-Dart one when the
+/// native library is not available (see [EdgeDetection]).
 Quad? tryDetectQuad(img.Image source) {
-  return DocumentEdgeDetector.detect(source);
+  return EdgeDetection.detect(source);
 }
 
 img.Image warpPerspective(
