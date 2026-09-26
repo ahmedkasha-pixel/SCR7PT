@@ -57,6 +57,9 @@ class FakeScanCamera implements ScanCamera {
   double? get sensorAspectRatio => customAspectRatio ?? 0.75;
 
   @override
+  int get sensorOrientation => 0;
+
+  @override
   void startImageStream(void Function(CameraImage image) onAvailable) {}
 
   @override

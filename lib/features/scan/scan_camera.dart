@@ -13,6 +13,9 @@ abstract class ScanCamera {
   bool get hasTorch;
   bool get isTorchOn;
   double? get sensorAspectRatio;
+
+  /// Clockwise rotation (0, 90, 180, 270) that makes preview frames upright.
+  int get sensorOrientation;
   void startImageStream(void Function(CameraImage image) onAvailable);
   Future<void> stopImageStream();
   Future<void> dispose();
@@ -40,6 +43,10 @@ class LiveScanCamera implements ScanCamera {
     // portrait aspect = height/width = 1 / aspect (e.g. 3/4 = 0.75).
     return aspect > 1.0 ? 1.0 / aspect : aspect;
   }
+
+  @override
+  int get sensorOrientation =>
+      _controller?.description.sensorOrientation ?? 90;
 
   @override
   Future<ScanCameraStatus> initialize() async {

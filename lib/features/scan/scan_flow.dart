@@ -1,17 +1,15 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as img;
 
 import '../../app/app_scope.dart';
 import '../../core/app_config.dart';
 import '../../core/geometry/quad.dart';
 import '../../core/naming/document_name.dart';
-import '../../core/processing/document_processor.dart';
+import '../../core/processing/frame_quad.dart';
 import '../../data/models/records.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/dialogs.dart';
@@ -174,13 +172,19 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
     });
   }
 
-  static Future<Quad?> _processFrameIsolate(CameraImage frame) async {
-    return compute(_detectFrameQuad, _FrameData(
-      planes: [for (final p in frame.planes) p.bytes],
-      width: frame.width,
-      height: frame.height,
-      formatGroup: frame.format.group.name,
-    ));
+  Future<Quad?> _processFrameIsolate(CameraImage frame) async {
+    return compute(
+      detectFrameQuad,
+      FrameData(
+        planes: [for (final p in frame.planes) p.bytes],
+        bytesPerRow: [for (final p in frame.planes) p.bytesPerRow],
+        bytesPerPixel: [for (final p in frame.planes) p.bytesPerPixel],
+        width: frame.width,
+        height: frame.height,
+        formatGroup: frame.format.group.name,
+        sensorOrientation: _camera?.sensorOrientation ?? 0,
+      ),
+    );
   }
 
   Future<void> _capture() async {
@@ -437,59 +441,5 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
               onManualChanged: (manual) => setState(() => _manual = manual),
             ),
     );
-  }
-}
-
-class _FrameData {
-  _FrameData({
-    required this.planes,
-    required this.width,
-    required this.height,
-    required this.formatGroup,
-  });
-
-  final List<Uint8List> planes;
-  final int width;
-  final int height;
-  final String formatGroup;
-}
-
-Quad? _detectFrameQuad(_FrameData data) {
-  try {
-    // Reconstruct RGB if planes have UV (YUV420), or use Y plane
-    final yPlane = data.planes.first;
-    final scale = math.max(1, data.width ~/ 360);
-    final sw = data.width ~/ scale;
-    final sh = data.height ~/ scale;
-
-    final hasUV = data.planes.length >= 3;
-    final uPlane = hasUV ? data.planes[1] : null;
-    final vPlane = hasUV ? data.planes[2] : null;
-
-    final rgb = img.Image(width: sw, height: sh, numChannels: 3);
-    for (var y = 0; y < sh; y++) {
-      final srcY = y * scale;
-      final yRow = srcY * data.width;
-      final uvRow = hasUV ? (srcY ~/ 2) * (data.width ~/ 2) : 0;
-      for (var x = 0; x < sw; x++) {
-        final srcX = x * scale;
-        final yVal = yPlane[yRow + srcX];
-        if (hasUV && uPlane != null && vPlane != null) {
-          final uvIdx = uvRow + (srcX ~/ 2);
-          final uVal = (uvIdx < uPlane.length ? uPlane[uvIdx] : 128) - 128;
-          final vVal = (uvIdx < vPlane.length ? vPlane[uvIdx] : 128) - 128;
-          final r = (yVal + 1.402 * vVal).round().clamp(0, 255);
-          final g = (yVal - 0.344136 * uVal - 0.714136 * vVal).round().clamp(0, 255);
-          final b = (yVal + 1.772 * uVal).round().clamp(0, 255);
-          rgb.setPixelRgb(x, y, r, g, b);
-        } else {
-          rgb.setPixelRgb(x, y, yVal, yVal, yVal);
-        }
-      }
-    }
-
-    return tryDetectQuad(rgb);
-  } catch (_) {
-    return null;
   }
 }

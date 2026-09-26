@@ -76,6 +76,7 @@ class ScanSession extends ChangeNotifier {
       stale: false,
     );
 
+    final initialCorners = editable.corners;
     pages.add(editable);
     index = pages.length - 1;
     notifyListeners();
@@ -90,16 +91,30 @@ class ScanSession extends ChangeNotifier {
           detectedQuad: manual ? null : detectedQuad?.toList(),
         ),
       ).then((refined) {
-        editable.previewJpeg = refined.previewJpeg;
         editable.width = refined.width;
         editable.height = refined.height;
-        // Keep user-edited corners if modified during adjustment
-        if (!editable.stale) {
+        // Keep user-edited corners if modified during adjustment. The
+        // refined corners come from detecting the captured photo itself, so
+        // only take them (and the preview rendered with them) while the page
+        // still shows the untouched initial corners.
+        final untouched = !editable.stale &&
+            _sameCorners(editable.corners, initialCorners);
+        if (untouched) {
+          editable.previewJpeg = refined.previewJpeg;
           editable.corners = Quad.fromList(refined.corners);
         }
         notifyListeners();
       }).catchError((_) {}),
     );
+  }
+
+  static bool _sameCorners(Quad a, Quad b) {
+    final x = a.toList();
+    final y = b.toList();
+    for (var i = 0; i < x.length; i++) {
+      if (x[i] != y[i]) return false;
+    }
+    return true;
   }
 
   Future<void> setFilter(PageFilter filter) async {
