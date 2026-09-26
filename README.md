@@ -7,7 +7,7 @@ The in-app name lives in `lib/core/app_config.dart` (`AppConfig.appName`). The l
 ## What Phase 1 does
 
 - Camera capture with automatic page-edge detection, draggable corners, perspective correction, and four filters: original, grayscale, black & white, and brighten.
-- Multi-page documents: add pages, reorder, delete. Import one or more images from the gallery.
+- Multi-page documents: after each capture and crop, **Scan another page** reopens the camera and adds the next page to the same file (leaving the camera goes back to the pages already scanned). A saved document can be extended later with **Scan more pages** on the document screen (or the **+** tile after the thumbnails); new pages go at the end, at the same page size. Reorder and delete pages. Import one or more images from the gallery. Up to 40 pages per document, with a message when the limit is reached.
 - Folders: create, rename, delete. Documents: name (default `yyyy-MM-dd HH-mm`), rename, move, delete, and search by name or by words and numbers inside the pages.
 - Home shows folders, recent documents, and a scan button. Settings cover language, the default share format (PDF or JPG), and page size (Auto, A4, Letter, or Original).
 - Share uses the native share sheet (`share_plus`), so the file can go to WhatsApp, Telegram, mail, or any other installed app. PDFs are built on the device. High, medium, and low compression show the real file size before sharing. Medium is the default.
