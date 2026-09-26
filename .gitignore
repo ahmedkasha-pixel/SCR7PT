@@ -49,3 +49,5 @@ app.*.map.json
 
 # Local agent scratch files
 /agent-tools/
+test_photos/
+*.zip

@@ -28,6 +28,7 @@ dependencies:
   connectivity_plus: ^7.3.1
   flutter_tesseract_ocr:
     path: third_party/flutter_tesseract_ocr
+  opencv_dart: ^2.2.2
 
 dev_dependencies:
   flutter_test:
