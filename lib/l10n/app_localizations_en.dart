@@ -60,6 +60,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reindexingStarted => 'In-document indexing started';
 
   @override
+  String get autoTorch => 'Turn on torch automatically when camera opens';
+
+  @override
+  String get autoTorchSubtitle =>
+      'Keep continuous light active while framing documents';
+
+  @override
   String get emptyHomeTitle => 'No documents yet';
 
   @override

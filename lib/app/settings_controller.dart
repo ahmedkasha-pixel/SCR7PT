@@ -57,6 +57,12 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setAutoTorch(bool value) async {
+    settings = settings.copyWith(autoTorch: value);
+    await _repository.save(settings);
+    notifyListeners();
+  }
+
   Future<void> setDriveAutoUpload(bool value) async {
     settings = settings.copyWith(driveAutoUpload: value);
     await _repository.save(settings);

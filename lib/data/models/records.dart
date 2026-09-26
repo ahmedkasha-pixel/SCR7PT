@@ -107,6 +107,7 @@ class AppSettings {
     this.compression = CompressionLevel.medium,
     this.driveAutoUpload = false,
     this.driveWifiOnly = false,
+    this.autoTorch = true,
   });
 
   /// `null` follows the device language, falling back to Arabic.
@@ -117,6 +118,7 @@ class AppSettings {
   final CompressionLevel compression;
   final bool driveAutoUpload;
   final bool driveWifiOnly;
+  final bool autoTorch;
 
   AppSettings copyWith({
     String? languageCode,
@@ -127,6 +129,7 @@ class AppSettings {
     CompressionLevel? compression,
     bool? driveAutoUpload,
     bool? driveWifiOnly,
+    bool? autoTorch,
   }) {
     return AppSettings(
       languageCode: clearLanguage ? null : (languageCode ?? this.languageCode),
@@ -136,6 +139,7 @@ class AppSettings {
       compression: compression ?? this.compression,
       driveAutoUpload: driveAutoUpload ?? this.driveAutoUpload,
       driveWifiOnly: driveWifiOnly ?? this.driveWifiOnly,
+      autoTorch: autoTorch ?? this.autoTorch,
     );
   }
 }

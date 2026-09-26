@@ -212,4 +212,26 @@ class Quad {
     }
     return true;
   }
+
+  /// True if the corner coordinates are very close to each other.
+  bool isNear(Quad other, {double threshold = 0.05}) {
+    double dist(NormPoint a, NormPoint b) =>
+        math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+    return dist(topLeft, other.topLeft) < threshold &&
+        dist(topRight, other.topRight) < threshold &&
+        dist(bottomRight, other.bottomRight) < threshold &&
+        dist(bottomLeft, other.bottomLeft) < threshold;
+  }
+
+  /// Linear interpolation between this quad and [next] for jitter smoothing.
+  Quad lerp(Quad next, double t) {
+    NormPoint blend(NormPoint a, NormPoint b) =>
+        NormPoint(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
+    return Quad(
+      topLeft: blend(topLeft, next.topLeft),
+      topRight: blend(topRight, next.topRight),
+      bottomRight: blend(bottomRight, next.bottomRight),
+      bottomLeft: blend(bottomLeft, next.bottomLeft),
+    );
+  }
 }

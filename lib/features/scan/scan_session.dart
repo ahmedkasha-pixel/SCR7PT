@@ -47,14 +47,22 @@ class ScanSession extends ChangeNotifier {
   EditablePage? get current =>
       pages.isEmpty ? null : pages[index.clamp(0, pages.length - 1)];
 
-  Future<void> addBytes(Uint8List bytes, {bool manual = false}) async {
+  Future<void> addBytes(
+    Uint8List bytes, {
+    bool manual = false,
+    Quad? detectedQuad,
+  }) async {
     if (pages.length >= AppConfig.maxPagesPerDocument) {
       throw StateError('page-limit');
     }
     await _guard(() async {
       final prepared = await compute(
         preparePageRequest,
-        PrepareRequest(bytes, pageSizeMode.name),
+        PrepareRequest(
+          bytes,
+          pageSizeMode.name,
+          detectedQuad: manual ? null : detectedQuad?.toList(),
+        ),
       );
       pages.add(
         EditablePage(

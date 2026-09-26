@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:camera/camera.dart';
 import 'package:docscan/app.dart';
 import 'package:docscan/app/library_controller.dart';
 import 'package:docscan/app/settings_controller.dart';
@@ -33,11 +34,28 @@ class FakeGallery implements GalleryPicker {
 }
 
 class FakeScanCamera implements ScanCamera {
-  FakeScanCamera(this.picture, {this.preview});
+  FakeScanCamera(
+    this.picture, {
+    this.preview,
+    this.torchSupported = true,
+  });
 
   final Uint8List picture;
   final Uint8List? preview;
   bool flash = false;
+  final bool torchSupported;
+
+  @override
+  bool get hasTorch => torchSupported;
+
+  @override
+  bool get isTorchOn => flash;
+
+  @override
+  void startImageStream(void Function(CameraImage image) onAvailable) {}
+
+  @override
+  Future<void> stopImageStream() async {}
 
   @override
   Future<ScanCameraStatus> initialize() async => ScanCameraStatus.ready;
@@ -94,7 +112,9 @@ class TestHarness {
   Future<void> dispose() async {
     await documents.close();
     if (await directory.exists()) {
-      await directory.delete(recursive: true);
+      try {
+        await directory.delete(recursive: true);
+      } catch (_) {}
     }
   }
 }
@@ -134,6 +154,7 @@ Future<TestHarness> createHarness({
   DriveAccount? driveAccount,
   List<DriveLink> driveLinks = const [],
   DriveGateway? driveGateway,
+  ScanCamera Function()? createCamera,
 }) async {
   TestWidgetsFlutterBinding.ensureInitialized();
   ensureSqlite();
@@ -177,8 +198,8 @@ Future<TestHarness> createHarness({
     sharer: sharer,
     drive: drive,
     gallery: FakeGallery(gallery),
-    createCamera: () =>
-        FakeScanCamera(picture ?? Uint8List(0), preview: preview),
+    createCamera: createCamera ??
+        (() => FakeScanCamera(picture ?? Uint8List(0), preview: preview)),
   );
   return TestHarness(
     app: app,

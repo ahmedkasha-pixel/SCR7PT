@@ -47,20 +47,39 @@ class RenderRequest {
 
 /// Arguments for [preparePageRequest] on a background isolate.
 class PrepareRequest {
-  PrepareRequest(this.bytes, this.pageSizeMode);
+  PrepareRequest(this.bytes, this.pageSizeMode, {this.detectedQuad});
 
   final Uint8List bytes;
   final String pageSizeMode;
+  final List<double>? detectedQuad;
 }
 
 /// Decode at capture resolution, detect edges, and preview the default filter.
-PreparedPage preparePage(Uint8List bytes) {
-  return preparePageRequest(PrepareRequest(bytes, PageSizeMode.auto.name));
+PreparedPage preparePage(Uint8List bytes, {Quad? detectedQuad}) {
+  return preparePageRequest(
+    PrepareRequest(
+      bytes,
+      PageSizeMode.auto.name,
+      detectedQuad: detectedQuad?.toList(),
+    ),
+  );
 }
 
 PreparedPage preparePageRequest(PrepareRequest request) {
   final decoded = _decodeFull(request.bytes);
-  final quad = detectQuad(decoded);
+  // Redetect on full-res image; if detection finds a usable quad, prefer it,
+  // or fall back to the live detected quad if provided and usable, or detectQuad.
+  final fullDetected = tryDetectQuad(decoded);
+  final Quad quad;
+  if (fullDetected != null && fullDetected.isUsable) {
+    quad = fullDetected;
+  } else if (request.detectedQuad != null) {
+    final live = Quad.fromList(request.detectedQuad!);
+    quad = live.isUsable ? live : Quad.standard;
+  } else {
+    quad = Quad.standard;
+  }
+
   final mode = PageSizeMode.values.asNameMap()[request.pageSizeMode] ??
       PageSizeMode.auto;
   final preview = renderImage(
@@ -171,6 +190,11 @@ img.Image applyFilter(img.Image source, PageFilter filter) {
 
 /// Finds a document quadrilateral. Falls back to [Quad.standard].
 Quad detectQuad(img.Image source) {
+  return tryDetectQuad(source) ?? Quad.standard;
+}
+
+/// Finds a document quadrilateral if confident, otherwise returns null.
+Quad? tryDetectQuad(img.Image source) {
   final work = _downscale(source, 480);
   final view = _Rgb(work);
   final gray = Uint8List(view.width * view.height);
@@ -185,7 +209,7 @@ Quad detectQuad(img.Image source) {
   for (final value in magnitude) {
     if (value > maxMag) maxMag = value;
   }
-  if (maxMag < 40) return Quad.standard;
+  if (maxMag < 40) return null;
 
   final threshold = math.max(30, (maxMag * 0.22).round());
   final points = <_Pt>[];
@@ -196,7 +220,7 @@ Quad detectQuad(img.Image source) {
       }
     }
   }
-  if (points.length < 30) return Quad.standard;
+  if (points.length < 30) return null;
 
   final sample = points.length > 6000
       ? [
@@ -205,13 +229,13 @@ Quad detectQuad(img.Image source) {
         ]
       : points;
   final hull = _convexHull(sample);
-  if (hull.length < 4) return Quad.standard;
+  if (hull.length < 4) return null;
 
   final quad = Quad.fromUnordered([
     for (final corner in _extremeCorners(hull))
       NormPoint(corner.x / (view.width - 1), corner.y / (view.height - 1)),
   ]);
-  return quad.isUsable ? quad : Quad.standard;
+  return quad.isUsable ? quad : null;
 }
 
 img.Image warpPerspective(

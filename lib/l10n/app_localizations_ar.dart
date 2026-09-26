@@ -60,6 +60,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get reindexingStarted => 'بدأت إعادة الفهرسة';
 
   @override
+  String get autoTorch => 'تشغيل الكشاف تلقائيًا عند فتح الكاميرا';
+
+  @override
+  String get autoTorchSubtitle =>
+      'إبقاء الإضاءة المستمرة نشطة أثناء تصوير المستندات';
+
+  @override
   String get emptyHomeTitle => 'لا توجد مستندات بعد';
 
   @override

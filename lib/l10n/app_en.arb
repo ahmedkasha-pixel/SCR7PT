@@ -26,6 +26,8 @@
   "reindexSearch": "Re-index in-document search",
   "reindexSearchSubtitle": "Re-process all documents with improved search accuracy",
   "reindexingStarted": "In-document indexing started",
+  "autoTorch": "Turn on torch automatically when camera opens",
+  "autoTorchSubtitle": "Keep continuous light active while framing documents",
   "emptyHomeTitle": "No documents yet",
   "emptyHomeBody": "Scan a page or import a photo. Files stay on this device.",
   "emptyFolderTitle": "This folder is empty",

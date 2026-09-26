@@ -1,10 +1,16 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 
 import '../../app/app_scope.dart';
 import '../../core/app_config.dart';
+import '../../core/geometry/quad.dart';
 import '../../core/naming/document_name.dart';
+import '../../core/processing/document_processor.dart';
 import '../../data/models/records.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/dialogs.dart';
@@ -22,7 +28,7 @@ class ScanFlow extends StatefulWidget {
   State<ScanFlow> createState() => _ScanFlowState();
 }
 
-class _ScanFlowState extends State<ScanFlow> {
+class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
   late final ScanSession _session = ScanSession(folderId: widget.folderId);
   ScanCamera? _camera;
   ScanCameraStatus? _status;
@@ -31,9 +37,15 @@ class _ScanFlowState extends State<ScanFlow> {
   bool _manual = false;
   bool _forcePop = false;
 
+  // Real-time edge detection state
+  Quad? _liveQuad;
+  bool _isProcessingFrame = false;
+  int _lastFrameTime = 0;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _session.addListener(_onSession);
     WidgetsBinding.instance.addPostFrameCallback((_) => _openCamera());
   }
@@ -46,8 +58,30 @@ class _ScanFlowState extends State<ScanFlow> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_camera == null || _status != ScanCameraStatus.ready) return;
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      // Turn off torch when app goes to background
+      if (_flash) {
+        _camera?.setFlash(false);
+      }
+      _camera?.stopImageStream();
+    } else if (state == AppLifecycleState.resumed && !_editing) {
+      // Restore torch per setting on resume
+      final autoTorch = AppScope.of(context).settings.settings.autoTorch;
+      if (autoTorch && _camera?.hasTorch == true) {
+        _camera?.setFlash(true);
+        if (mounted) setState(() => _flash = true);
+      }
+      _startLiveStreamIfReady();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _session.removeListener(_onSession);
+    _camera?.setFlash(false);
     _camera?.dispose();
     _session.dispose();
     super.dispose();
@@ -70,23 +104,82 @@ class _ScanFlowState extends State<ScanFlow> {
       await camera.dispose();
       return;
     }
+
+    final autoTorch = AppScope.of(context).settings.settings.autoTorch;
+    var initialFlash = false;
+    if (autoTorch && camera.hasTorch) {
+      await camera.setFlash(true);
+      initialFlash = true;
+    } else {
+      await camera.setFlash(false);
+    }
+
     setState(() {
       _camera = camera;
       _status = status;
+      _flash = initialFlash;
+      _liveQuad = null;
     });
+
+    if (status == ScanCameraStatus.ready) {
+      _startLiveStreamIfReady();
+    }
+  }
+
+  void _startLiveStreamIfReady() {
+    final camera = _camera;
+    if (camera == null) return;
+    camera.startImageStream(_onCameraFrame);
+  }
+
+  void _onCameraFrame(CameraImage frame) {
+    if (_isProcessingFrame || _manual || _editing) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Throttle to ~8 fps (125ms gap)
+    if (now - _lastFrameTime < 125) return;
+    _lastFrameTime = now;
+    _isProcessingFrame = true;
+
+    _processFrameIsolate(frame).then((detected) {
+      if (!mounted || _manual || _editing) return;
+      if (detected != null && detected.isUsable) {
+        final smoothed = _liveQuad != null
+            ? _liveQuad!.lerp(detected, 0.4)
+            : detected;
+        setState(() => _liveQuad = smoothed);
+      } else {
+        setState(() => _liveQuad = null);
+      }
+    }).catchError((_) {
+      // Ignore background detection errors
+    }).whenComplete(() {
+      _isProcessingFrame = false;
+    });
+  }
+
+  static Future<Quad?> _processFrameIsolate(CameraImage frame) async {
+    return compute(_detectFrameQuad, _FrameData(
+      planes: [for (final p in frame.planes) p.bytes],
+      width: frame.width,
+      height: frame.height,
+      formatGroup: frame.format.group.name,
+    ));
   }
 
   Future<void> _capture() async {
     final camera = _camera;
     if (camera == null) return;
     try {
+      await camera.stopImageStream();
+      final capturedQuad = _liveQuad;
       final bytes = await camera.takePicture();
-      await _session.addBytes(bytes, manual: _manual);
+      await _session.addBytes(bytes, manual: _manual, detectedQuad: capturedQuad);
       if (!mounted) return;
       await _camera?.dispose();
       setState(() {
         _camera = null;
         _editing = true;
+        _liveQuad = null;
       });
     } on StateError {
       _showLimit();
@@ -102,6 +195,7 @@ class _ScanFlowState extends State<ScanFlow> {
     try {
       final images = await AppScope.of(context).gallery.pickImages();
       if (images.isEmpty || !mounted) return;
+      await _camera?.stopImageStream();
       for (final bytes in images) {
         await _session.addBytes(bytes, manual: _manual);
       }
@@ -110,6 +204,7 @@ class _ScanFlowState extends State<ScanFlow> {
       setState(() {
         _camera = null;
         _editing = true;
+        _liveQuad = null;
       });
     } on StateError {
       _showLimit();
@@ -264,6 +359,8 @@ class _ScanFlowState extends State<ScanFlow> {
   }
 
   void _leave() {
+    _camera?.setFlash(false);
+    _camera?.stopImageStream();
     setState(() => _forcePop = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) Navigator.pop(context);
@@ -283,7 +380,9 @@ class _ScanFlowState extends State<ScanFlow> {
               camera: _camera,
               status: _status,
               flashOn: _flash,
+              hasTorch: _camera?.hasTorch ?? false,
               manual: _manual,
+              detectedQuad: _liveQuad,
               pageCount: _session.pages.length,
               onCapture: _capture,
               onGallery: _import,
@@ -293,5 +392,44 @@ class _ScanFlowState extends State<ScanFlow> {
               onManualChanged: (manual) => setState(() => _manual = manual),
             ),
     );
+  }
+}
+
+class _FrameData {
+  _FrameData({
+    required this.planes,
+    required this.width,
+    required this.height,
+    required this.formatGroup,
+  });
+
+  final List<Uint8List> planes;
+  final int width;
+  final int height;
+  final String formatGroup;
+}
+
+Quad? _detectFrameQuad(_FrameData data) {
+  try {
+    final yPlane = data.planes.first;
+    // Downscale directly from the Y/grayscale plane to width ~240
+    final scale = math.max(1, data.width ~/ 240);
+    final sw = data.width ~/ scale;
+    final sh = data.height ~/ scale;
+
+    final gray = img.Image(width: sw, height: sh, numChannels: 1);
+    for (var y = 0; y < sh; y++) {
+      final srcY = y * scale;
+      for (var x = 0; x < sw; x++) {
+        final srcX = x * scale;
+        final lum = yPlane[srcY * data.width + srcX];
+        gray.setPixelRgb(x, y, lum, lum, lum);
+      }
+    }
+
+    final rgb = gray.convert(format: img.Format.uint8, numChannels: 3);
+    return tryDetectQuad(rgb);
+  } catch (_) {
+    return null;
   }
 }

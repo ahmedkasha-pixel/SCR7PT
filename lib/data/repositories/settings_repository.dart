@@ -10,6 +10,7 @@ class SettingsRepository {
   static const compressionKey = 'compression_level';
   static const driveAutoUploadKey = 'drive_auto_upload';
   static const driveWifiOnlyKey = 'drive_wifi_only';
+  static const autoTorchKey = 'auto_torch';
   static const ocrPipelineVersionKey = 'ocr_pipeline_version';
   static const currentOcrPipelineVersion = 2;
 
@@ -45,6 +46,7 @@ class SettingsRepository {
           CompressionLevel.medium,
       driveAutoUpload: prefs.getBool(driveAutoUploadKey) ?? false,
       driveWifiOnly: prefs.getBool(driveWifiOnlyKey) ?? false,
+      autoTorch: prefs.getBool(autoTorchKey) ?? true,
     );
   }
 
@@ -61,5 +63,6 @@ class SettingsRepository {
     await prefs.setString(compressionKey, settings.compression.name);
     await prefs.setBool(driveAutoUploadKey, settings.driveAutoUpload);
     await prefs.setBool(driveWifiOnlyKey, settings.driveWifiOnly);
+    await prefs.setBool(autoTorchKey, settings.autoTorch);
   }
 }

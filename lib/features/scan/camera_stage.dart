@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../core/geometry/quad.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/wordmark.dart';
@@ -12,6 +13,7 @@ class CameraStage extends StatelessWidget {
     required this.camera,
     required this.status,
     required this.flashOn,
+    required this.hasTorch,
     required this.manual,
     required this.pageCount,
     required this.onCapture,
@@ -20,11 +22,13 @@ class CameraStage extends StatelessWidget {
     required this.onRetry,
     required this.onClose,
     required this.onManualChanged,
+    this.detectedQuad,
   });
 
   final ScanCamera? camera;
   final ScanCameraStatus? status;
   final bool flashOn;
+  final bool hasTorch;
   final bool manual;
   final int pageCount;
   final VoidCallback onCapture;
@@ -33,11 +37,13 @@ class CameraStage extends StatelessWidget {
   final VoidCallback onRetry;
   final VoidCallback onClose;
   final ValueChanged<bool> onManualChanged;
+  final Quad? detectedQuad;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final ready = status == ScanCameraStatus.ready && camera != null;
+    final liveQuad = !manual ? detectedQuad : null;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
@@ -47,7 +53,12 @@ class CameraStage extends StatelessWidget {
             camera!.buildPreview()
           else
             _Message(status: status, onGallery: onGallery, onRetry: onRetry),
-          const IgnorePointer(child: _CropFrame()),
+          if (ready && liveQuad != null)
+            IgnorePointer(
+              child: AnimatedLiveQuadOverlay(quad: liveQuad),
+            )
+          else
+            const IgnorePointer(child: _CropFrame()),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
@@ -88,11 +99,15 @@ class CameraStage extends StatelessWidget {
                         key: const Key('shutter-button'),
                         onPressed: ready ? onCapture : null,
                       ),
-                      _RoundAction(
-                        icon: flashOn ? Icons.flash_on : Icons.flash_off,
-                        label: l10n.flash,
-                        onPressed: ready ? onFlash : null,
-                      ),
+                      if (hasTorch)
+                        _RoundAction(
+                          key: const Key('flash-toggle-button'),
+                          icon: flashOn ? Icons.flashlight_on : Icons.flashlight_off,
+                          label: l10n.flash,
+                          onPressed: ready ? onFlash : null,
+                        )
+                      else
+                        const SizedBox(width: 56, height: 56),
                     ],
                   ),
                 ],
@@ -103,6 +118,88 @@ class CameraStage extends StatelessWidget {
       ),
     );
   }
+}
+
+class AnimatedLiveQuadOverlay extends StatelessWidget {
+  const AnimatedLiveQuadOverlay({super.key, required this.quad});
+
+  final Quad quad;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<Quad>(
+      tween: _QuadTween(end: quad),
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOut,
+      builder: (context, animatedQuad, _) {
+        return CustomPaint(
+          painter: _LiveQuadPainter(quad: animatedQuad),
+        );
+      },
+    );
+  }
+}
+
+class _QuadTween extends Tween<Quad> {
+  _QuadTween({required Quad end}) : super(end: end);
+
+  @override
+  Quad lerp(double t) {
+    if (begin == null) return end!;
+    return begin!.lerp(end!, t);
+  }
+}
+
+class _LiveQuadPainter extends CustomPainter {
+  const _LiveQuadPainter({required this.quad});
+
+  final Quad quad;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    Offset toScreen(NormPoint p) => Offset(p.x * size.width, p.y * size.height);
+
+    final tl = toScreen(quad.topLeft);
+    final tr = toScreen(quad.topRight);
+    final br = toScreen(quad.bottomRight);
+    final bl = toScreen(quad.bottomLeft);
+
+    final path = Path()
+      ..moveTo(tl.dx, tl.dy)
+      ..lineTo(tr.dx, tr.dy)
+      ..lineTo(br.dx, br.dy)
+      ..lineTo(bl.dx, bl.dy)
+      ..close();
+
+    // Semi-transparent brand blue fill: #2563EB with 0.22 opacity
+    final fillPaint = Paint()
+      ..color = const Color(0x382563EB)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    // Glowing border: brand blue #2563EB strokeWidth 3
+    final strokePaint = Paint()
+      ..color = AppColors.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, strokePaint);
+
+    // Accent corner markers
+    final cornerDotPaint = Paint()
+      ..color = const Color(0xFF06B6D4) // Accent cyan
+      ..style = PaintingStyle.fill;
+    const dotR = 6.0;
+    canvas.drawCircle(tl, dotR, cornerDotPaint);
+    canvas.drawCircle(tr, dotR, cornerDotPaint);
+    canvas.drawCircle(br, dotR, cornerDotPaint);
+    canvas.drawCircle(bl, dotR, cornerDotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiveQuadPainter oldDelegate) =>
+      oldDelegate.quad != quad;
 }
 
 class _CountPill extends StatelessWidget {

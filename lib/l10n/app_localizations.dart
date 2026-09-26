@@ -188,6 +188,18 @@ abstract class AppLocalizations {
   /// **'In-document indexing started'**
   String get reindexingStarted;
 
+  /// No description provided for @autoTorch.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on torch automatically when camera opens'**
+  String get autoTorch;
+
+  /// No description provided for @autoTorchSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep continuous light active while framing documents'**
+  String get autoTorchSubtitle;
+
   /// No description provided for @emptyHomeTitle.
   ///
   /// In en, this message translates to:

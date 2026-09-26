@@ -125,6 +125,17 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Card(
+                child: SwitchListTile(
+                  key: const Key('auto-torch-tile'),
+                  secondary: const Icon(Icons.flashlight_on_outlined),
+                  title: Text(l10n.autoTorch),
+                  subtitle: Text(l10n.autoTorchSubtitle),
+                  value: current.autoTorch,
+                  onChanged: settings.setAutoTorch,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
                 child: ListTile(
                   key: const Key('open-signatures'),
                   leading: const Icon(Icons.draw_outlined),
