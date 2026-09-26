@@ -101,32 +101,45 @@ class Quad {
     }
   }
 
-  /// Orders four unordered points into a clockwise page quad.
+  /// Orders four polygon vertices in clockwise order starting from top-left.
   static Quad fromUnordered(List<NormPoint> points) {
     if (points.length != 4) {
       throw ArgumentError('A document quad needs 4 points.');
     }
-    NormPoint best(
-      double Function(NormPoint p) score, {
-      required bool minimum,
-    }) {
-      var chosen = points.first;
-      var chosenScore = score(chosen);
-      for (final point in points.skip(1)) {
-        final value = score(point);
-        if (minimum ? value < chosenScore : value > chosenScore) {
-          chosen = point;
-          chosenScore = value;
-        }
+
+    // 1. Compute centroid
+    final cx = points.map((p) => p.x).reduce((a, b) => a + b) / 4.0;
+    final cy = points.map((p) => p.y).reduce((a, b) => a + b) / 4.0;
+
+    // 2. Sort by polar angle around centroid (clockwise)
+    final sorted = [...points]..sort((a, b) {
+      final angleA = math.atan2(a.y - cy, a.x - cx);
+      final angleB = math.atan2(b.y - cy, b.x - cx);
+      return angleA.compareTo(angleB);
+    });
+
+    // 3. Find the corner closest to top-left (min sum of x + y)
+    var tlIdx = 0;
+    var minSum = sorted[0].x + sorted[0].y;
+    for (var i = 1; i < 4; i++) {
+      final s = sorted[i].x + sorted[i].y;
+      if (s < minSum) {
+        minSum = s;
+        tlIdx = i;
       }
-      return chosen;
     }
 
+    // 4. Arrange in clockwise order: TL, TR, BR, BL
+    final tl = sorted[tlIdx];
+    final tr = sorted[(tlIdx + 1) % 4];
+    final br = sorted[(tlIdx + 2) % 4];
+    final bl = sorted[(tlIdx + 3) % 4];
+
     return Quad(
-      topLeft: best((p) => p.x + p.y, minimum: true),
-      topRight: best((p) => p.x - p.y, minimum: false),
-      bottomRight: best((p) => p.x + p.y, minimum: false),
-      bottomLeft: best((p) => p.x - p.y, minimum: true),
+      topLeft: tl,
+      topRight: tr,
+      bottomRight: br,
+      bottomLeft: bl,
     );
   }
 

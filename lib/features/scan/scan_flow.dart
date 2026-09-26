@@ -134,6 +134,9 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
     camera.startImageStream(_onCameraFrame);
   }
 
+  int _consecutiveDetections = 0;
+  Quad? _candidateQuad;
+
   void _onCameraFrame(CameraImage frame) {
     if (_isProcessingFrame || _manual || _editing) return;
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -145,11 +148,23 @@ class _ScanFlowState extends State<ScanFlow> with WidgetsBindingObserver {
     _processFrameIsolate(frame).then((detected) {
       if (!mounted || _manual || _editing) return;
       if (detected != null && detected.isUsable) {
-        final smoothed = _liveQuad != null
-            ? _liveQuad!.lerp(detected, 0.4)
-            : detected;
-        setState(() => _liveQuad = smoothed);
+        if (_candidateQuad != null && _candidateQuad!.isNear(detected, threshold: 0.06)) {
+          _consecutiveDetections++;
+        } else {
+          _consecutiveDetections = 1;
+          _candidateQuad = detected;
+        }
+
+        // Require at least 2 consecutive consistent frames before showing/updating overlay
+        if (_consecutiveDetections >= 2) {
+          final smoothed = _liveQuad != null
+              ? _liveQuad!.lerp(detected, 0.35)
+              : detected;
+          setState(() => _liveQuad = smoothed);
+        }
       } else {
+        _consecutiveDetections = 0;
+        _candidateQuad = null;
         setState(() => _liveQuad = null);
       }
     }).catchError((_) {
@@ -441,23 +456,38 @@ class _FrameData {
 
 Quad? _detectFrameQuad(_FrameData data) {
   try {
+    // Reconstruct RGB if planes have UV (YUV420), or use Y plane
     final yPlane = data.planes.first;
-    // Downscale directly from the Y/grayscale plane to width ~240
-    final scale = math.max(1, data.width ~/ 240);
+    final scale = math.max(1, data.width ~/ 360);
     final sw = data.width ~/ scale;
     final sh = data.height ~/ scale;
 
-    final gray = img.Image(width: sw, height: sh, numChannels: 1);
+    final hasUV = data.planes.length >= 3;
+    final uPlane = hasUV ? data.planes[1] : null;
+    final vPlane = hasUV ? data.planes[2] : null;
+
+    final rgb = img.Image(width: sw, height: sh, numChannels: 3);
     for (var y = 0; y < sh; y++) {
       final srcY = y * scale;
+      final yRow = srcY * data.width;
+      final uvRow = hasUV ? (srcY ~/ 2) * (data.width ~/ 2) : 0;
       for (var x = 0; x < sw; x++) {
         final srcX = x * scale;
-        final lum = yPlane[srcY * data.width + srcX];
-        gray.setPixelRgb(x, y, lum, lum, lum);
+        final yVal = yPlane[yRow + srcX];
+        if (hasUV && uPlane != null && vPlane != null) {
+          final uvIdx = uvRow + (srcX ~/ 2);
+          final uVal = (uvIdx < uPlane.length ? uPlane[uvIdx] : 128) - 128;
+          final vVal = (uvIdx < vPlane.length ? vPlane[uvIdx] : 128) - 128;
+          final r = (yVal + 1.402 * vVal).round().clamp(0, 255);
+          final g = (yVal - 0.344136 * uVal - 0.714136 * vVal).round().clamp(0, 255);
+          final b = (yVal + 1.772 * uVal).round().clamp(0, 255);
+          rgb.setPixelRgb(x, y, r, g, b);
+        } else {
+          rgb.setPixelRgb(x, y, yVal, yVal, yVal);
+        }
       }
     }
 
-    final rgb = gray.convert(format: img.Format.uint8, numChannels: 3);
     return tryDetectQuad(rgb);
   } catch (_) {
     return null;

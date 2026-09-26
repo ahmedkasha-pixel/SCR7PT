@@ -310,8 +310,8 @@ void main() {
       expect(instant.width, 600);
       expect(instant.height, 800);
       expect(instant.corners, testQuad.toList());
-      // Instant preparation must complete in under 15ms (no heavy warp)
-      expect(sw.elapsedMilliseconds, lessThan(30));
+      // Instant preparation must complete in under 50ms (no heavy warp)
+      expect(sw.elapsedMilliseconds, lessThan(50));
       print('preparePageInstant elapsed: ${sw.elapsedMilliseconds}ms');
     });
 

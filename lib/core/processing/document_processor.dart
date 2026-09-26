@@ -7,6 +7,7 @@ import '../app_config.dart';
 import '../geometry/page_aspect.dart';
 import '../geometry/quad.dart';
 import '../../data/models/records.dart';
+import 'edge_detector.dart';
 import 'enhance.dart';
 
 /// Result of preparing a captured or imported photo for editing.
@@ -214,47 +215,7 @@ Quad detectQuad(img.Image source) {
 
 /// Finds a document quadrilateral if confident, otherwise returns null.
 Quad? tryDetectQuad(img.Image source) {
-  final work = _downscale(source, 480);
-  final view = _Rgb(work);
-  final gray = Uint8List(view.width * view.height);
-  for (var y = 0; y < view.height; y++) {
-    for (var x = 0; x < view.width; x++) {
-      gray[y * view.width + x] = view.luma(x, y);
-    }
-  }
-  final blurred = _boxBlur(gray, view.width, view.height);
-  final magnitude = _sobel(blurred, view.width, view.height);
-  var maxMag = 0;
-  for (final value in magnitude) {
-    if (value > maxMag) maxMag = value;
-  }
-  if (maxMag < 40) return null;
-
-  final threshold = math.max(30, (maxMag * 0.22).round());
-  final points = <_Pt>[];
-  for (var y = 1; y < view.height - 1; y++) {
-    for (var x = 1; x < view.width - 1; x++) {
-      if (magnitude[y * view.width + x] >= threshold) {
-        points.add(_Pt(x.toDouble(), y.toDouble()));
-      }
-    }
-  }
-  if (points.length < 30) return null;
-
-  final sample = points.length > 6000
-      ? [
-          for (var i = 0; i < points.length; i += points.length ~/ 6000)
-            points[i],
-        ]
-      : points;
-  final hull = _convexHull(sample);
-  if (hull.length < 4) return null;
-
-  final quad = Quad.fromUnordered([
-    for (final corner in _extremeCorners(hull))
-      NormPoint(corner.x / (view.width - 1), corner.y / (view.height - 1)),
-  ]);
-  return quad.isUsable ? quad : null;
+  return DocumentEdgeDetector.detect(source);
 }
 
 img.Image warpPerspective(
@@ -391,125 +352,10 @@ img.Image _map(
 
 int _luma(int r, int g, int b) => (0.299 * r + 0.587 * g + 0.114 * b).round();
 
-Uint8List _boxBlur(Uint8List src, int width, int height) {
-  final temp = Uint8List(src.length);
-  final dest = Uint8List(src.length);
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      final x0 = math.max(0, x - 1);
-      final x1 = math.min(width - 1, x + 1);
-      var sum = 0;
-      for (var i = x0; i <= x1; i++) {
-        sum += src[y * width + i];
-      }
-      temp[y * width + x] = (sum / (x1 - x0 + 1)).round();
-    }
-  }
-  for (var y = 0; y < height; y++) {
-    final y0 = math.max(0, y - 1);
-    final y1 = math.min(height - 1, y + 1);
-    for (var x = 0; x < width; x++) {
-      var sum = 0;
-      for (var i = y0; i <= y1; i++) {
-        sum += temp[i * width + x];
-      }
-      dest[y * width + x] = (sum / (y1 - y0 + 1)).round();
-    }
-  }
-  return dest;
-}
-
-Int32List _sobel(Uint8List gray, int width, int height) {
-  final mag = Int32List(gray.length);
-  for (var y = 1; y < height - 1; y++) {
-    for (var x = 1; x < width - 1; x++) {
-      int at(int px, int py) => gray[py * width + px];
-      final gx =
-          -at(x - 1, y - 1) +
-          at(x + 1, y - 1) +
-          -2 * at(x - 1, y) +
-          2 * at(x + 1, y) +
-          -at(x - 1, y + 1) +
-          at(x + 1, y + 1);
-      final gy =
-          -at(x - 1, y - 1) -
-          2 * at(x, y - 1) -
-          at(x + 1, y - 1) +
-          at(x - 1, y + 1) +
-          2 * at(x, y + 1) +
-          at(x + 1, y + 1);
-      mag[y * width + x] = math.max(gx.abs(), gy.abs());
-    }
-  }
-  return mag;
-}
-
 class _Pt {
   const _Pt(this.x, this.y);
   final double x;
   final double y;
-}
-
-List<_Pt> _convexHull(List<_Pt> points) {
-  final sorted = [...points]
-    ..sort((a, b) {
-      final byX = a.x.compareTo(b.x);
-      return byX != 0 ? byX : a.y.compareTo(b.y);
-    });
-  final unique = <_Pt>[];
-  for (final point in sorted) {
-    if (unique.isEmpty ||
-        unique.last.x != point.x ||
-        unique.last.y != point.y) {
-      unique.add(point);
-    }
-  }
-  if (unique.length <= 3) return unique;
-
-  double cross(_Pt o, _Pt a, _Pt b) =>
-      (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-
-  final lower = <_Pt>[];
-  for (final point in unique) {
-    while (lower.length >= 2 &&
-        cross(lower[lower.length - 2], lower.last, point) <= 0) {
-      lower.removeLast();
-    }
-    lower.add(point);
-  }
-  final upper = <_Pt>[];
-  for (final point in unique.reversed) {
-    while (upper.length >= 2 &&
-        cross(upper[upper.length - 2], upper.last, point) <= 0) {
-      upper.removeLast();
-    }
-    upper.add(point);
-  }
-  lower.removeLast();
-  upper.removeLast();
-  return [...lower, ...upper];
-}
-
-List<_Pt> _extremeCorners(List<_Pt> hull) {
-  _Pt pick(double Function(_Pt p) score, bool minimum) {
-    var chosen = hull.first;
-    var chosenScore = score(chosen);
-    for (final point in hull.skip(1)) {
-      final value = score(point);
-      if (minimum ? value < chosenScore : value > chosenScore) {
-        chosen = point;
-        chosenScore = value;
-      }
-    }
-    return chosen;
-  }
-
-  return [
-    pick((p) => p.x + p.y, true),
-    pick((p) => p.x - p.y, false),
-    pick((p) => p.x + p.y, false),
-    pick((p) => p.x - p.y, true),
-  ];
 }
 
 _Pt _denorm(NormPoint point, int width, int height) => _Pt(
