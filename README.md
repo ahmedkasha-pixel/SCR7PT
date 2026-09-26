@@ -31,7 +31,7 @@ lib/
 
 `LibraryController` loads folder and document metadata and filters search in memory after that load. `DocumentRepository` is the only writer of SQLite rows and page files. Page images live under the app documents directory (`docscan/documents/{id}/`). Metadata lives in `docscan.db`.
 
-Scanning runs in `ScanSession`. Heavy work (`preparePage`, `renderRequest`) goes through `compute` so the UI isolate stays responsive. The shutter uses `ResolutionPreset.max` and `takePicture` (a still, not a preview frame). `document_processor.dart` is pure Dart (`package:image`): edge detection on a small copy, full-resolution homography, then the filter. After the crop, the page aspect is recovered from the two vanishing points (focal length from the Zhang–He relation) so an angled photo is not stretched. Auto snaps to A4 or Letter when the ratio is within 6 percent; a full-resolution capture is written at 300 dpi (A4 is 2480×3508). Every page in one document uses the first page's pixel size. A small inset (0.75 percent) is pulled in before the warp so background slivers do not remain on the border. New scans default to Auto enhance, which flattens shadows before export. The stored JPEG (quality 88) keeps the filter. Sharing recompresses that master. The long edge is kept up to 4096 px (`AppConfig.maxImageEdge`). A document holds at most 40 pages.
+Scanning runs in `ScanSession`. Heavy work (`preparePage`, `renderRequest`) goes through `compute` so the UI isolate stays responsive. The shutter uses `ResolutionPreset.max` and `takePicture` (a still, not a preview frame). `document_processor.dart` detects the page edges with OpenCV (see [Page-edge detection](#page-edge-detection)), then runs the full-resolution homography and the filter in pure Dart (`package:image`). After the crop, the page aspect is recovered from the two vanishing points (focal length from the Zhang–He relation) so an angled photo is not stretched. Auto snaps to A4 or Letter when the ratio is within 6 percent; a full-resolution capture is written at 300 dpi (A4 is 2480×3508). Every page in one document uses the first page's pixel size. A small inset (0.75 percent) is pulled in before the warp so background slivers do not remain on the border. New scans default to Auto enhance, which flattens shadows before export. The stored JPEG (quality 88) keeps the filter. Sharing recompresses that master. The long edge is kept up to 4096 px (`AppConfig.maxImageEdge`). A document holds at most 40 pages.
 
 Signatures are transparent PNGs. Import from the camera, the gallery, or a finger drawing; crop; then drop the paper with a local brightness mask. Placements are stored on the page and burned in only when the page is shown or exported, so the filtered master stays editable.
 
@@ -43,6 +43,7 @@ Signatures are transparent PNGs. Import from the camera, the gallery, or a finge
 | `image_picker` 1.2 | Gallery import | Official plugin. Uses the Android photo picker and iOS PHPicker, so the app does not request broad photo-library permission on Android 13+. |
 | `image` 4.x | Decode, edges, warp, filters, JPEG | Pure Dart. Same results on both platforms and testable without OpenCV native binaries. |
 | `sqflite` 2.4 | Metadata | Mature SQLite plugin on Android and iOS. Tests use `sqflite_common_ffi`. |
+| `opencv_dart` 2.2 | Page-edge detection | OpenCV 4.13 through FFI. The dartcv4 build hook compiles only `core`, `imgproc`, and `imgcodecs` from source (CMake + NDK), for arm64 only in this project. |
 | `pdf` 3.x | Local PDF | Embeds each page JPEG on A4, Letter, or a matching custom size. No network. |
 | `share_plus` 12 | System share sheet | Official share plugin. File sharing is a mobile feature (not supported on Linux desktop). |
 | `shared_preferences` | Language and default share format | Small key-value settings. |
@@ -53,9 +54,23 @@ Signatures are transparent PNGs. Import from the camera, the gallery, or a finge
 Not used, on purpose:
 
 - `cunning_document_scanner` (and similar VisionKit wrappers) replace the whole capture UI. That hides the crop and filter screen this app needs, and the iOS scanner does not expose the same filter controls.
-- `opencv_dart` pulls large native libraries and an NDK build. The Dart detector is enough for a bright page on a darker background and stays identical in tests.
-
 Edge detection is a heuristic, not a machine-learning model. A flat or low-contrast frame falls back to a slight inset quad the user can drag.
+
+## Page-edge detection
+
+`lib/core/processing/opencv_edge_detector.dart` is a port of the Python/OpenCV prototype (`unified_detector.py`, `detect_document_quad`): Canny on gray and HSV saturation plus a paper mask; candidates from closed contours (`approxPolyDP`) and from `HoughLinesP` boundary lines (top/bottom/left/right, with a right-frame-edge fallback); every candidate is scored by luma/saturation contrast, Canny edge alignment, area, corner angles, A4 aspect, and a dark-border penalty. The parameters are the prototype's, tuned for a 1024 px long edge, so photos are resized to that first. On a 576×1024 frame the Dart result is identical to the Python one.
+
+- Auto-crop and gallery import: `tryDetectQuad` → `EdgeDetection.detect`, inside `compute`. After a capture the crop screen opens with the live quad; the background pass then detects the captured photo itself at 1024 px and replaces the corners unless the user has already moved them.
+- Live preview: `detectFrameQuad` (`frame_quad.dart`) converts the YUV420/BGRA frame using its row and pixel strides, rotates it upright by the sensor orientation, and detects at 640 px, also inside `compute`.
+- Fallback: if the native library cannot be loaded, `EdgeDetection` switches to the older pure-Dart `DocumentEdgeDetector` for that isolate. An OpenCV error on a single image falls back for that image only.
+
+Accuracy on the four private reference photos (IoU against hand-marked corners, 576×1024): 96.2 / 96.9 / 97.9 / 95.9 %, the same as the prototype. Run it with the photos outside the repo:
+
+```bash
+SCR7PT_REAL_PHOTOS=/path/to/photos flutter test test/opencv_edge_accuracy_test.dart
+```
+
+Without the variable those tests are skipped. The photos contain private data; `test_photos/` and `*.zip` are gitignored and the photos must never be committed.
 
 ## Search inside pages
 
@@ -115,7 +130,7 @@ flutter analyze
 flutter test
 ```
 
-Covered: edge detection and filters, perspective crop, PDF generation, folder and document create/rename/move/search/delete, settings persistence, share-file preparation, and home/settings widgets (Arabic RTL, search, language, share format).
+Covered: edge detection (OpenCV port, Dart fallback, live YUV frames) and filters, perspective crop, PDF generation, folder and document create/rename/move/search/delete, settings persistence, share-file preparation, and home/settings widgets (Arabic RTL, search, language, share format).
 
 Widget tests that touch the disk or SQLite must run that work inside `WidgetTester.runAsync`. The widget binding uses a fake clock, and real file and database futures do not complete outside it.
 

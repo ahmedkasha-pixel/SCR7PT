@@ -51,3 +51,6 @@ app.*.map.json
 /agent-tools/
 test_photos/
 *.zip
+
+# Release builds copied into the project folder
+*.apk
