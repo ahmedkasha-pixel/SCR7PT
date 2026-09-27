@@ -36,11 +36,7 @@ Future<void> main() async {
   final signatures = SignatureRepository(database: database, files: files);
   final settings = SettingsController(SettingsRepository());
   await settings.load();
-  final sharer = DocumentSharer(
-    files: files,
-    signatures: signatures,
-    documents: documents,
-  );
+  final sharer = DocumentSharer(files: files, signatures: signatures);
   final drive = DriveController(
     configured: GoogleConfig.isConfigured,
     store: SqliteDriveStore(database),

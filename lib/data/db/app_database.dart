@@ -12,7 +12,7 @@ class AppDatabase {
     if (existing != null) return existing;
     final opened = await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -112,6 +112,9 @@ class AppDatabase {
         if (oldVersion < 4) {
           await _createPageText(db);
         }
+        if (oldVersion < 5) {
+          await _ensurePageTextSearchColumns(db);
+        }
       },
       // FTS5 is optional. Creating it inside onCreate/onUpgrade aborts the
       // sqflite transaction on Android 10 and older (`no such module: fts5`)
@@ -139,10 +142,27 @@ Future<void> _createPageText(Database db) async {
       raw_text TEXT NOT NULL,
       normalized TEXT NOT NULL,
       digits TEXT NOT NULL,
+      compact TEXT NOT NULL DEFAULT '',
+      compact_stripped TEXT NOT NULL DEFAULT '',
       fts_rowid INTEGER,
       FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE
     )
   ''');
+}
+
+Future<void> _ensurePageTextSearchColumns(Database db) async {
+  Future<void> add(String name) async {
+    try {
+      await db.execute(
+        "ALTER TABLE page_text ADD COLUMN $name TEXT NOT NULL DEFAULT ''",
+      );
+    } catch (error) {
+      debugPrint('page_text.$name already present: $error');
+    }
+  }
+
+  await add('compact');
+  await add('compact_stripped');
 }
 
 /// Best-effort full-text index. Search still works from `page_text` when
