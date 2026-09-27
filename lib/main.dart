@@ -36,7 +36,11 @@ Future<void> main() async {
   final signatures = SignatureRepository(database: database, files: files);
   final settings = SettingsController(SettingsRepository());
   await settings.load();
-  final sharer = DocumentSharer(files: files, signatures: signatures);
+  final sharer = DocumentSharer(
+    files: files,
+    signatures: signatures,
+    documents: documents,
+  );
   final drive = DriveController(
     configured: GoogleConfig.isConfigured,
     store: SqliteDriveStore(database),
@@ -53,7 +57,7 @@ Future<void> main() async {
     onIndexed: library.upsertIndexed,
     onIndexing: library.setIndexing,
   );
-  documents.onPagesReady = indexer.enqueue;
+  documents.onPagesReady = (pages) => indexer.enqueue(pages, urgent: true);
   await drive.start(
     monitor: GoogleConfig.isConfigured ? PluginNetworkMonitor() : null,
   );

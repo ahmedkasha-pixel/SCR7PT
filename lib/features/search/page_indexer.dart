@@ -34,21 +34,27 @@ class PageIndexer {
   int _total = 0;
   int _processed = 0;
 
-  void enqueue(List<PageRecord> pages) {
+  void enqueue(List<PageRecord> pages, {bool urgent = false}) {
     if (_queue.isEmpty && !_running) {
       _total = 0;
       _processed = 0;
     }
+    final incoming = <PageRecord>[];
     for (final page in pages) {
       if (_failed.contains(page.id)) continue;
       final existing = _queue.indexWhere((item) => item.id == page.id);
       if (existing >= 0) {
-        _queue[existing] = page;
+        _queue.removeAt(existing);
+      } else if (_queued.contains(page.id)) {
         continue;
       }
-      if (_queued.contains(page.id)) continue;
       _queued.add(page.id);
-      _queue.add(page);
+      incoming.add(page);
+    }
+    if (urgent) {
+      _queue.insertAll(0, incoming);
+    } else {
+      _queue.addAll(incoming);
     }
     _total = _processed + _queue.length;
     if (_total > 0) {

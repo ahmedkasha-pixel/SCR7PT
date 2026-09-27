@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/search/content_search.dart';
@@ -16,15 +18,17 @@ class LibraryController extends ChangeNotifier {
   List<DocumentRecord> recent = const [];
   List<DocumentRecord> catalog = const [];
   List<DocumentRecord> searchResults = const [];
-  List<IndexedPage> indexed = const [];
   List<SearchHit> searchHits = const [];
   int indexingCurrent = 0;
   int indexingTotal = 0;
-  int get indexingPages => indexingTotal > 0 ? (indexingTotal - indexingCurrent + 1) : 0;
+  int get indexingPages =>
+      indexingTotal > 0 ? (indexingTotal - indexingCurrent + 1) : 0;
   int _generation = 0;
+  int _searchGeneration = 0;
+  Timer? _searchTimer;
 
-  /// Pages saved while a refresh was waiting on SQLite.
-  final List<IndexedPage> _pendingIndexed = [];
+  /// Pages indexed in this session; merged into the next content search.
+  final List<IndexedPage> _sessionIndexed = [];
 
   bool get searching => query.trim().isNotEmpty;
 
@@ -40,18 +44,11 @@ class LibraryController extends ChangeNotifier {
     try {
       final loadedFolders = await documents.listFolders();
       final loadedCatalog = await documents.allDocuments();
-      final loadedIndexed = await documents.indexedPages();
       if (generation != _generation) return;
       folders = loadedFolders;
       catalog = loadedCatalog;
       recent = loadedCatalog.take(20).toList();
-      final byId = {for (final page in loadedIndexed) page.pageId: page};
-      for (final page in _pendingIndexed) {
-        byId[page.pageId] = page;
-      }
-      _pendingIndexed.clear();
-      indexed = byId.values.toList();
-      _applySearch();
+      await _applySearch();
       error = null;
     } catch (caught) {
       if (generation != _generation) return;
@@ -66,19 +63,28 @@ class LibraryController extends ChangeNotifier {
 
   void setQuery(String value) {
     query = value;
-    _applySearch();
+    if (!searching) {
+      _searchTimer?.cancel();
+      searchHits = const [];
+      searchResults = const [];
+      notifyListeners();
+      return;
+    }
+    _rankLocal(const []);
     notifyListeners();
+    _searchTimer?.cancel();
+    _searchTimer = Timer(const Duration(milliseconds: 160), () {
+      unawaited(_applySearch());
+    });
   }
 
   void upsertIndexed(IndexedPage page) {
-    _pendingIndexed.add(page);
-    indexed = [
-      for (final existing in indexed)
-        if (existing.pageId != page.pageId) existing,
-      page,
-    ];
-    _applySearch();
-    notifyListeners();
+    _sessionIndexed.removeWhere((item) => item.pageId == page.pageId);
+    _sessionIndexed.add(page);
+    if (searching) {
+      _rankLocal(_sessionIndexed);
+      notifyListeners();
+    }
   }
 
   void setIndexing(int current, int total) {
@@ -88,13 +94,47 @@ class LibraryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _applySearch() {
+  Future<void> _applySearch() async {
     if (!searching) {
       searchHits = const [];
       searchResults = const [];
       return;
     }
-    searchHits = rankSearch(query, catalog, indexed);
-    searchResults = [for (final hit in searchHits) hit.document];
+    final generation = ++_searchGeneration;
+    final current = query;
+    final terms = analyzeQuery(current);
+    List<IndexedPage> pages = const [];
+    try {
+      pages = await documents.pagesMatching(terms);
+    } catch (caught) {
+      debugPrint('Content search skipped: $caught');
+    }
+    if (generation != _searchGeneration || current != query) return;
+    final byId = {for (final page in pages) page.pageId: page};
+    for (final page in _sessionIndexed) {
+      byId[page.pageId] = page;
+    }
+    _rankLocal(byId.values.toList());
+    notifyListeners();
+  }
+
+  void _rankLocal(List<IndexedPage> pages) {
+    if (!searching) {
+      searchHits = const [];
+      searchResults = const [];
+      return;
+    }
+    searchHits = rankSearch(query, catalog, pages, folders: folders);
+    final seen = <String>{};
+    searchResults = [
+      for (final hit in searchHits)
+        if (seen.add(hit.document.id)) hit.document,
+    ];
+  }
+
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    super.dispose();
   }
 }
