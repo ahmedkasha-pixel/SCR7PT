@@ -102,10 +102,9 @@ class LibraryController extends ChangeNotifier {
     }
     final generation = ++_searchGeneration;
     final current = query;
-    final terms = analyzeQuery(current);
     List<IndexedPage> pages = const [];
     try {
-      pages = await documents.pagesMatching(terms);
+      pages = await documents.indexedPages();
     } catch (caught) {
       debugPrint('Content search skipped: $caught');
     }
@@ -124,7 +123,7 @@ class LibraryController extends ChangeNotifier {
       searchResults = const [];
       return;
     }
-    searchHits = rankSearch(query, catalog, pages, folders: folders);
+    searchHits = rankSearch(query, catalog, pages);
     final seen = <String>{};
     searchResults = [
       for (final hit in searchHits)
